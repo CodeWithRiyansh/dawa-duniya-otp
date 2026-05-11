@@ -37,34 +37,31 @@ const transporter = nodemailer.createTransport({
 let otps = {}; 
 
 // --- OTP BHEJNE KA ROUTE ---
-app.post('/send-otp', otpLimiter, async (req, res) => { // 'otpLimiter' yahan add kiya
+app.post('/send-otp', otpLimiter, async (req, res) => {
     const { email } = req.body;
 
-    const blacklistedDomains = ['tempmail.com', '10minutemail.com', 'mailinator.com'];
-    const domain = email.split('@')[1];
-    if (blacklistedDomains.includes(domain)) {
-        return res.status(400).json({ success: false, message: "Bhai, ye temporary email allow nahi hai!" });
-    }
+    // ... baaki logic (blacklist check etc) ...
 
     const otp = Math.floor(100000 + Math.random() * 900000);
     
-    // YAHAN BADLAV KIYA: Code ke saath time bhi save kar rahe hain
     otps[email] = {
         code: otp,
-        expiresAt: Date.now() + 5 * 60 * 1000 // 5 Minute expiry
+        expiresAt: Date.now() + 5 * 60 * 1000 
     };
 
-    const mailOptions = {
+    // --- YE WALI LINE CHECK KARO (Isi mein galti hai) ---
+    const mailOptions = {  // <--- Check karo yahan 'const' likha hai ya nahi
         from: process.env.EMAIL_USER,
         to: email,
         subject: 'Dawa Duniya OTP Verification',
         text: `Aapka OTP ye hai: ${otp}`
     };
 
+    // Yahan mailOptions use ho raha hai, isliye upar define hona zaroori hai
     transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
-            console.log("Mail Error:", error.code);
-            return res.status(500).json({ success: false, message: "Email bhejte waqt error aaya!" });
+            console.log("Mail Error:", error);
+            return res.status(500).json({ success: false, message: "Email nahi gaya!" });
         }
         res.status(200).json({ success: true, message: "OTP sent successfully!" });
     });
