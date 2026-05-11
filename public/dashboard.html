@@ -1,83 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | Dawa Duniya</title>
-    
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Dawa Duniya Dashboard</title>
+
+    <!-- Google Font -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    />
+
     <script>
-        // --- 1. SABSE PEHLE SECURITY CHECK ---
-        // Ye script page load hone se pehle hi user ko bhaga degi agar token nahi hai
-        (function() {
-            const token = localStorage.getItem('dawaToken');
+        // ==============================
+        // AUTH CHECK BEFORE PAGE LOAD
+        // ==============================
+        (function () {
+            const token = localStorage.getItem("dawaToken");
+
+            // Agar token nahi hai toh login page
             if (!token) {
-                // Bina alert ke turant redirect karna professional hota hai
-                window.location.replace('/index.html'); 
+                window.location.href = "./index.html";
+            } else {
+                // Token hai toh page dikhao
+                document.documentElement.style.visibility = "visible";
             }
         })();
     </script>
 
     <style>
-        :root { --primary: #00a884; --bg: #f0f4f8; }
-        body { 
-            font-family: 'Poppins', sans-serif; 
-            background: var(--bg); 
-            display: flex; 
-            flex-direction: column;
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
+        :root {
+            --primary: #00a884;
+            --primary-dark: #008f70;
+            --bg: #f0f4f8;
+            --text: #1e293b;
+            --danger: #ff4b2b;
+            --danger-dark: #e63e20;
+        }
+
+        /* Page hide until auth check */
+        html {
+            visibility: hidden;
+        }
+
+        * {
             margin: 0;
-            /* Default hidden taaki bina login ke jhalak bhi na dikhe */
-            visibility: hidden; 
+            padding: 0;
+            box-sizing: border-box;
         }
+
+        body {
+            font-family: "Poppins", sans-serif;
+            background: linear-gradient(135deg, #e6f7f3, #f5f9fc);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
         .container {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+            background: #fff;
+            padding: 40px 30px;
+            border-radius: 22px;
             text-align: center;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+            animation: fadeIn 0.5s ease;
         }
-        h1 { color: var(--primary); }
+
+        .logo {
+            font-size: 55px;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            color: var(--primary);
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        p {
+            color: var(--text);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .user-box {
+            margin-top: 25px;
+            background: #f8fafc;
+            padding: 18px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .token-status {
+            color: var(--primary-dark);
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
         .logout-btn {
-            margin-top: 20px;
-            padding: 12px 25px;
-            background: #ff4b2b;
-            color: white;
+            margin-top: 28px;
+            width: 100%;
+            padding: 14px;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
+            background: var(--danger);
+            color: #fff;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: 0.3s;
+            transition: 0.3s ease;
         }
-        .logout-btn:hover { background: #e63e20; transform: scale(1.05); }
-    </script>
+
+        .logout-btn:hover {
+            background: var(--danger-dark);
+            transform: translateY(-2px);
+        }
+
+        .logout-btn:active {
+            transform: scale(0.98);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(25px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .container {
+                padding: 30px 22px;
+            }
+
+            h1 {
+                font-size: 26px;
+            }
+
+            p {
+                font-size: 15px;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
     <div class="container">
-        <h1>Welcome to Dawa Duniya! 🏥</h1>
-        <p>Aapka authentication successful raha.</p>
-        
+
+        <div class="logo">🏥</div>
+
+        <h1>Welcome to Dawa Duniya</h1>
+
+        <p>
+            Aap successfully login ho chuke hain.
+            Dashboard access granted.
+        </p>
+
+        <div class="user-box">
+            <p><strong>Authentication Status</strong></p>
+            <p class="token-status">✔ Secure Session Active</p>
+        </div>
+
         <button class="logout-btn" onclick="logout()">
-            Logout Karein
+            Logout
         </button>
+
     </div>
 
     <script>
-        // --- 2. AGAR TOKEN HAI TOH CONTENT DIKHAO ---
-        window.onload = function() {
-            if (localStorage.getItem('dawaToken')) {
-                document.body.style.visibility = 'visible';
-            }
-        };
-
+        // ==============================
+        // LOGOUT FUNCTION
+        // ==============================
         function logout() {
-            // Token saaf karo
-            localStorage.removeItem('dawaToken');
-            // Login page par wapas bhejo
-            window.location.replace('/index.html');
+
+            // Token remove
+            localStorage.removeItem("dawaToken");
+
+            // Redirect to login
+            window.location.href = "./index.html";
         }
+
+        // ==============================
+        // EXTRA SECURITY
+        // Browser back button se protect
+        // ==============================
+        window.history.pushState(null, null, window.location.href);
+
+        window.onpopstate = function () {
+            window.history.go(1);
+        };
     </script>
+
 </body>
 </html>
