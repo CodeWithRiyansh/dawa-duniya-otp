@@ -4,36 +4,79 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | Dawa Duniya</title>
+    
     <script>
-        // 1. Page load hone se pehle check karo
-        const token = localStorage.getItem('dawaToken');
-        if (!token) {
-            alert("Bhai, pehle login toh kar lo!");
-            window.location.href = '/index.html';
-        }
+        // --- 1. SABSE PEHLE SECURITY CHECK ---
+        // Ye script page load hone se pehle hi user ko bhaga degi agar token nahi hai
+        (function() {
+            const token = localStorage.getItem('dawaToken');
+            if (!token) {
+                // Bina alert ke turant redirect karna professional hota hai
+                window.location.replace('/index.html'); 
+            }
+        })();
     </script>
+
     <style>
-        /* Jab tak token verify na ho, body ko hide rakho (Optional but Pro step) */
-        body { display: none; }
-    </style>
+        :root { --primary: #00a884; --bg: #f0f4f8; }
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background: var(--bg); 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0;
+            /* Default hidden taaki bina login ke jhalak bhi na dikhe */
+            visibility: hidden; 
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: var(--primary); }
+        .logout-btn {
+            margin-top: 20px;
+            padding: 12px 25px;
+            background: #ff4b2b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .logout-btn:hover { background: #e63e20; transform: scale(1.05); }
+    </script>
 </head>
 <body>
-    <h1>Welcome to Dawa Duniya Dashboard!</h1>
-    <p>Bhai aap login ho chuke ho.</p>
-    
-    <button onclick="logout()" style="padding: 10px; background: red; color: white; border: none; cursor: pointer;">
-        Logout
-    </button>
+
+    <div class="container">
+        <h1>Welcome to Dawa Duniya! 🏥</h1>
+        <p>Aapka authentication successful raha.</p>
+        
+        <button class="logout-btn" onclick="logout()">
+            Logout Karein
+        </button>
+    </div>
 
     <script>
-        // Agar token hai, toh body dikhao
-        if (localStorage.getItem('dawaToken')) {
-            document.body.style.display = 'block';
-        }
+        // --- 2. AGAR TOKEN HAI TOH CONTENT DIKHAO ---
+        window.onload = function() {
+            if (localStorage.getItem('dawaToken')) {
+                document.body.style.visibility = 'visible';
+            }
+        };
 
         function logout() {
-            localStorage.removeItem('dawaToken'); // Pass delete karo
-            window.location.href = '/index.html'; // Bahar phek do
+            // Token saaf karo
+            localStorage.removeItem('dawaToken');
+            // Login page par wapas bhejo
+            window.location.replace('/index.html');
         }
     </script>
 </body>
