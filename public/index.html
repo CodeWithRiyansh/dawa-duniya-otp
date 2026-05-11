@@ -9,10 +9,9 @@
         :root { --primary: #00a884; --secondary: #007bff; --bg: #f0f4f8; }
         body { font-family: 'Poppins', sans-serif; background: var(--bg); margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
         
-        /* Glassmorphism Card */
-        .card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); padding: 40px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 100%; max-width: 380px; transition: all 0.5s ease; border: 1px solid rgba(255,255,255,0.5); }
+        .card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); padding: 40px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 100%; max-width: 380px; transition: all 0.5s ease; border: 1px solid rgba(255,255,255,0.5); text-align: center; }
         
-        h2 { color: var(--primary); font-weight: 600; margin-bottom: 8px; }
+        h2 { color: var(--primary); font-weight: 600; margin-bottom: 8px; margin-top: 0; }
         p { color: #666; font-size: 14px; margin-bottom: 25px; }
 
         .input-group { margin-bottom: 20px; text-align: left; }
@@ -21,36 +20,32 @@
 
         button { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--primary), #00d2a0); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(0, 168, 132, 0.3); }
         button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 168, 132, 0.4); }
-        button:active { transform: scale(0.98); }
-
-        /* Smooth Transition Classes */
-        .fade-out { opacity: 0; transform: translateX(-20px); pointer-events: none; }
+        
         .hidden { display: none; }
         .visible { display: block; animation: fadeIn 0.5s forwards; }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 10px; display: none; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 18px; height: 18px; animation: spin 1s linear infinite; display: none; margin: 0 auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Status message styling */
-        #msg { margin-top: 20px; font-size: 13px; font-weight: 500; line-height: 1.4; transition: 0.3s; }
+        #msg { margin-top: 20px; font-size: 13px; font-weight: 500; line-height: 1.4; min-height: 20px; }
     </style>
 </head>
 <body>
 
-<div class="card" id="loginCard">
+<div class="card">
     <h2>Dawa Duniya</h2>
     <p id="subtext">Aapki sehat, humari zimmedari.</p>
 
     <div id="emailSection">
         <div class="input-group">
-            <input type="email" id="email" placeholder="Email Address" required>
+            <input type="email" id="email" placeholder="Apna Email Daalein" required>
         </div>
-        <button onclick="handleSendOTP()">
+        <button id="sendBtn" onclick="handleSendOTP()">
             <span id="btnLoader" class="loader"></span>
             <span id="btnText">OTP Bhejein</span>
         </button>
@@ -58,10 +53,10 @@
 
     <div id="otpSection" class="hidden">
         <div class="input-group">
-            <input type="text" id="otp" placeholder="6-digit Code" maxlength="6">
+            <input type="text" id="otp" placeholder="6-digit OTP Daalein" maxlength="6">
         </div>
         <button onclick="handleVerifyOTP()" style="background: linear-gradient(135deg, var(--secondary), #0056b3);">
-            Verify & Signup
+            Verify & Login
         </button>
     </div>
 
@@ -71,30 +66,19 @@
 <script>
     async function handleSendOTP() {
         const email = document.getElementById('email').value;
+        const msg = document.getElementById('msg');
         const btnLoader = document.getElementById('btnLoader');
         const btnText = document.getElementById('btnText');
-        const msg = document.getElementById('msg');
-        const subtext = document.getElementById('subtext');
 
-        // 1. Email Check
         if(!email) {
             msg.style.color = "red";
             msg.innerText = "❌ Bhai email toh daalo!";
             return;
         }
 
-        // 2. Format Check
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailPattern.test(email)) {
-            msg.style.color = "red";
-            msg.innerText = "❌ Bhai email ka format sahi nahi hai!";
-            return;
-        }
-
-        // Start Loading
-        btnLoader.style.display = 'inline-block';
-        btnText.innerText = "Processing...";
-        msg.innerText = ""; // Purana message saaf karo
+        btnLoader.style.display = 'block';
+        btnText.style.display = 'none';
+        msg.innerText = "";
 
         try {
             const res = await fetch('/send-otp', {
@@ -105,38 +89,37 @@
 
             const data = await res.json();
 
-            if (res.ok) {
-                // Section Toggle
+            if (data.success) {
+                // IMPORTANT: Vercel ke liye token save kar rahe hain
+                localStorage.setItem('tempVToken', data.vToken);
+                
                 document.getElementById('emailSection').classList.add('hidden');
                 document.getElementById('otpSection').classList.remove('hidden');
                 document.getElementById('otpSection').classList.add('visible');
                 
-                // --- CUSTOM MESSAGE UPDATE ---
-                subtext.innerText = "Verification Code Bheja Gaya Hai.";
-                msg.style.color = "#00a884"; 
-                msg.style.fontWeight = "bold";
-                msg.innerHTML = `✅ Humne aapka OTP aapki is email id <b>${email}</b> par bhej diya hai. Pls email check karein!`;
+                msg.style.color = "green";
+                msg.innerHTML = `✅ OTP aapki email <b>${email}</b> par bhej diya gaya hai.`;
             } else {
                 msg.style.color = "red";
-                msg.innerText = "❌ " + (data.message || "Email nahi gaya. Try again.");
+                msg.innerText = "❌ " + data.message;
             }
         } catch (e) {
             msg.style.color = "red";
-            msg.innerText = "❌ Server error! Check your connection.";
+            msg.innerText = "❌ Connection Error! Check terminal.";
         } finally {
             btnLoader.style.display = 'none';
-            btnText.innerText = "OTP Bhejein";
+            btnText.style.display = 'block';
         }
     }
 
     async function handleVerifyOTP() {
-        const email = document.getElementById('email').value;
         const userOtp = document.getElementById('otp').value;
+        const vToken = localStorage.getItem('tempVToken'); // Token uthao
         const msg = document.getElementById('msg');
 
         if(!userOtp) {
             msg.style.color = "red";
-            msg.innerText = "❌ OTP toh daalo bhai!";
+            msg.innerText = "❌ OTP likhna bhool gaye!";
             return;
         }
 
@@ -144,25 +127,31 @@
             const res = await fetch('/verify-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, userOtp })
+                body: JSON.stringify({ 
+                    userOtp: userOtp, 
+                    vToken: vToken  // Memory ki jagah token bhej rahe hain
+                })
             });
 
             const data = await res.json();
 
-            if (res.ok) {
-    const data = await res.json(); // Ye line add/check karo
-    
-    // TOKEN KO SAVE KARO (LocalStorage mein)
-    localStorage.setItem('dawaToken', data.token);
+            if (data.success) {
+                localStorage.removeItem('tempVToken'); // Kaam ho gaya toh hata do
+                localStorage.setItem('dawaToken', data.token); // Final Login Token
 
-    msg.style.color = "green";
-    msg.innerText = "✅ Verification Successful! Redirecting...";
-    setTimeout(() => {
-        window.location.href = '/dashboard.html';
-    }, 1500);
-}
+                msg.style.color = "green";
+                msg.innerText = "✅ Sahi hai! Dashboard par le ja raha hoon...";
+
+                setTimeout(() => {
+                    window.location.href = '/dashboard.html';
+                }, 1500);
+            } else {
+                msg.style.color = "red";
+                msg.innerText = "❌ " + data.message;
+            }
         } catch (e) {
-            msg.innerText = "❌ Verification failed.";
+            msg.style.color = "red";
+            msg.innerText = "❌ Verification failed. Refresh karke try karein.";
         }
     }
 </script>
