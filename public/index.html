@@ -35,6 +35,9 @@
 
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 10px; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Status message styling */
+        #msg { margin-top: 20px; font-size: 13px; font-weight: 500; line-height: 1.4; transition: 0.3s; }
     </style>
 </head>
 <body>
@@ -62,7 +65,7 @@
         </button>
     </div>
 
-    <p id="msg" style="margin-top: 20px; font-size: 13px; font-weight: 500;"></p>
+    <p id="msg"></p>
 </div>
 
 <script>
@@ -71,12 +74,27 @@
         const btnLoader = document.getElementById('btnLoader');
         const btnText = document.getElementById('btnText');
         const msg = document.getElementById('msg');
+        const subtext = document.getElementById('subtext');
 
-        if(!email) return alert("Bhai email toh daalo!");
+        // 1. Email Check
+        if(!email) {
+            msg.style.color = "red";
+            msg.innerText = "❌ Bhai email toh daalo!";
+            return;
+        }
+
+        // 2. Format Check
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(email)) {
+            msg.style.color = "red";
+            msg.innerText = "❌ Bhai email ka format sahi nahi hai!";
+            return;
+        }
 
         // Start Loading
         btnLoader.style.display = 'inline-block';
         btnText.innerText = "Processing...";
+        msg.innerText = ""; // Purana message saaf karo
 
         try {
             const res = await fetch('/send-otp', {
@@ -85,19 +103,26 @@
                 body: JSON.stringify({ email })
             });
 
+            const data = await res.json();
+
             if (res.ok) {
+                // Section Toggle
                 document.getElementById('emailSection').classList.add('hidden');
                 document.getElementById('otpSection').classList.remove('hidden');
                 document.getElementById('otpSection').classList.add('visible');
-                document.getElementById('subtext').innerText = "Humne aapke email par code bheja hai.";
-                msg.style.color = "green";
-                msg.innerText = "OTP sent!";
+                
+                // --- CUSTOM MESSAGE UPDATE ---
+                subtext.innerText = "Verification Code Bheja Gaya Hai.";
+                msg.style.color = "#00a884"; 
+                msg.style.fontWeight = "bold";
+                msg.innerHTML = `✅ Humne aapka OTP aapki is email id <b>${email}</b> par bhej diya hai. Pls email check karein!`;
             } else {
                 msg.style.color = "red";
-                msg.innerText = "Email nahi gaya. Try again.";
+                msg.innerText = "❌ " + (data.message || "Email nahi gaya. Try again.");
             }
         } catch (e) {
-            console.error(e);
+            msg.style.color = "red";
+            msg.innerText = "❌ Server error! Check your connection.";
         } finally {
             btnLoader.style.display = 'none';
             btnText.innerText = "OTP Bhejein";
@@ -109,21 +134,33 @@
         const userOtp = document.getElementById('otp').value;
         const msg = document.getElementById('msg');
 
-        const res = await fetch('/verify-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, userOtp })
-        });
-
-        if (res.ok) {
-            msg.style.color = "green";
-            msg.innerText = "Verification Successful! Redirecting...";
-            setTimeout(() => {
-                window.location.href = '/dashboard.html';
-            }, 1500);
-        } else {
+        if(!userOtp) {
             msg.style.color = "red";
-            msg.innerText = "Galat OTP hai bhai!";
+            msg.innerText = "❌ OTP toh daalo bhai!";
+            return;
+        }
+
+        try {
+            const res = await fetch('/verify-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, userOtp })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                msg.style.color = "green";
+                msg.innerText = "✅ Verification Successful! Redirecting...";
+                setTimeout(() => {
+                    window.location.href = '/dashboard.html';
+                }, 1500);
+            } else {
+                msg.style.color = "red";
+                msg.innerText = "❌ " + (data.message || "Galat OTP hai bhai!");
+            }
+        } catch (e) {
+            msg.innerText = "❌ Verification failed.";
         }
     }
 </script>
