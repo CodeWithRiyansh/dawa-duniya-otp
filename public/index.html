@@ -150,15 +150,17 @@
             const data = await res.json();
 
             if (res.ok) {
-                msg.style.color = "green";
-                msg.innerText = "✅ Verification Successful! Redirecting...";
-                setTimeout(() => {
-                    window.location.href = '/dashboard.html';
-                }, 1500);
-            } else {
-                msg.style.color = "red";
-                msg.innerText = "❌ " + (data.message || "Galat OTP hai bhai!");
-            }
+    const data = await res.json(); // Ye line add/check karo
+    
+    // TOKEN KO SAVE KARO (LocalStorage mein)
+    localStorage.setItem('dawaToken', data.token);
+
+    msg.style.color = "green";
+    msg.innerText = "✅ Verification Successful! Redirecting...";
+    setTimeout(() => {
+        window.location.href = '/dashboard.html';
+    }, 1500);
+}
         } catch (e) {
             msg.innerText = "❌ Verification failed.";
         }

@@ -1,2 +1,40 @@
-<h1>Welcome to Dawa Duniya Dashboard!</h1>
-<p>Bhai aap login ho chuke ho.</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Dawa Duniya</title>
+    <script>
+        // 1. Page load hone se pehle check karo
+        const token = localStorage.getItem('dawaToken');
+        if (!token) {
+            alert("Bhai, pehle login toh kar lo!");
+            window.location.href = '/index.html';
+        }
+    </script>
+    <style>
+        /* Jab tak token verify na ho, body ko hide rakho (Optional but Pro step) */
+        body { display: none; }
+    </style>
+</head>
+<body>
+    <h1>Welcome to Dawa Duniya Dashboard!</h1>
+    <p>Bhai aap login ho chuke ho.</p>
+    
+    <button onclick="logout()" style="padding: 10px; background: red; color: white; border: none; cursor: pointer;">
+        Logout
+    </button>
+
+    <script>
+        // Agar token hai, toh body dikhao
+        if (localStorage.getItem('dawaToken')) {
+            document.body.style.display = 'block';
+        }
+
+        function logout() {
+            localStorage.removeItem('dawaToken'); // Pass delete karo
+            window.location.href = '/index.html'; // Bahar phek do
+        }
+    </script>
+</body>
+</html>

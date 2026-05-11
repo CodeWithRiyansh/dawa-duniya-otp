@@ -1,10 +1,21 @@
 const express = require('express');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken'); // Sabse upar add karo
+const JWT_SECRET = 'DawaDuniya_Super_Secret_Key_123'; // Ye aapka secret hai
 require('dotenv').config();
 
 const app = express();
 app.use(express.json()); 
+// Limiter setup: 5 minute mein sirf 3 baar OTP request
+const otpLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000, 
+    max: 3, 
+    message: { success: false, message: "Bhai, itni jaldi kya hai? 5 minute baad try karna!" },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 // 1. Static files ka access (Public folder se HTML/CSS load hogi)
 app.use(express.static(path.join(__dirname, 'public')));
@@ -26,10 +37,9 @@ const transporter = nodemailer.createTransport({
 let otps = {}; 
 
 // --- OTP BHEJNE KA ROUTE ---
-app.post('/send-otp', async (req, res) => {
+app.post('/send-otp', otpLimiter, async (req, res) => { // 'otpLimiter' yahan add kiya
     const { email } = req.body;
 
-    // Domain Blocklist Check
     const blacklistedDomains = ['tempmail.com', '10minutemail.com', 'mailinator.com'];
     const domain = email.split('@')[1];
     if (blacklistedDomains.includes(domain)) {
@@ -37,7 +47,12 @@ app.post('/send-otp', async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000);
-    otps[email] = otp;
+    
+    // YAHAN BADLAV KIYA: Code ke saath time bhi save kar rahe hain
+    otps[email] = {
+        code: otp,
+        expiresAt: Date.now() + 5 * 60 * 1000 // 5 Minute expiry
+    };
 
     const mailOptions = {
         from: process.env.EMAIL_USER,
@@ -45,6 +60,15 @@ app.post('/send-otp', async (req, res) => {
         subject: 'Dawa Duniya OTP Verification',
         text: `Aapka OTP ye hai: ${otp}`
     };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            console.log("Mail Error:", error.code);
+            return res.status(500).json({ success: false, message: "Email bhejte waqt error aaya!" });
+        }
+        res.status(200).json({ success: true, message: "OTP sent successfully!" });
+    });
+});
 
     // Nodemailer with JSON Response
     transporter.sendMail(mailOptions, (error, info) => {
@@ -59,22 +83,27 @@ app.post('/send-otp', async (req, res) => {
         // Success JSON
         res.status(200).json({ success: true, message: "OTP sent successfully!" });
     });
-});
+
 
 // --- OTP VERIFY KARNE KA ROUTE ---
 app.post('/verify-otp', (req, res) => {
     const { email, userOtp } = req.body;
-    
-    if (otps[email] && otps[email] == userOtp) {
-        delete otps[email];
-        // Redirect logic ke liye JSON success bhejna zaroori hai
-        res.status(200).json({ success: true, message: "Verification Successful!" });
-    } else {
-        res.status(400).json({ success: false, message: "Galat OTP hai bhai!" });
-    }
-});
+    const otpData = otps[email];
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    if (otpData && otpData.code == userOtp && Date.now() < otpData.expiresAt) {
+        delete otps[email];
+
+        // 1. Token banao (User ki email aur secret use karke)
+        // Ye token 1 ghante tak valid rahega
+        const token = jwt.sign({ email }, JWT_SECRET, { expiresIn: '1h' });
+
+        // 2. Token ko response mein bhejo
+        res.status(200).json({ 
+            success: true, 
+            message: "Verified!", 
+            token: token // Frontend ko token de diya
+        });
+    } else {
+        res.status(400).json({ success: false, message: "Invalid or Expired OTP" });
+    }
 });
