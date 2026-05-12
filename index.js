@@ -115,7 +115,7 @@ app.post("/send-otp", async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Sirf trusted email providers allowed hain!"
+          "“Bhai hacker nahi, creator ban!” 🚀🙏💀"
       });
     }
 
