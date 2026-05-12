@@ -2,7 +2,7 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 const path = require('path');
 const jwt = require('jsonwebtoken');
-const isDisposable = require('disposable-email-detector'); // Disposable detector
+const { isDisposable } = require('disposable-email-detector');// Disposable detector
 require('dotenv').config();
 
 const app = express();
@@ -15,7 +15,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+   host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Use SSL
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -40,8 +42,8 @@ app.post('/send-otp', async (req, res) => {
 
         // B. Disposable Email Check
         if (isDisposable(email)) {
-            return res.status(400).json({ success: false, message: "Fake/Temporary emails allow nahi hain bhai!" });
-        }
+    return res.status(400).json({ success: false, message: "Fake email allowed nahi hai!" });
+}
 
         const otp = Math.floor(100000 + Math.random() * 900000);
 
