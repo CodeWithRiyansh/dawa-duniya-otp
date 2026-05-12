@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
+
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0"
@@ -233,10 +234,7 @@
 
         </div>
 
-        <button
-            id="sendBtn"
-            onclick="handleSendOTP()"
-        >
+        <button id="sendBtn">
 
             <span id="btnLoader" class="loader"></span>
 
@@ -265,10 +263,7 @@
 
         </div>
 
-        <button
-            id="verifyBtn"
-            onclick="handleVerifyOTP()"
-        >
+        <button id="verifyBtn">
             Verify & Login
         </button>
 
@@ -281,18 +276,50 @@
 <script>
 
     // =====================================
+    // API URL
+    // =====================================
+
+    const API_URL =
+        "http://localhost:3000";
+
+    // FOR VERCEL USE THIS:
+    // const API_URL =
+    // "https://dawa-duniya-otp.vercel.app";
+
+    // =====================================
     // AUTO LOGIN CHECK
     // =====================================
+
     if (
         localStorage.getItem("dawaToken")
     ) {
+
         window.location.href =
             "/dashboard.html";
     }
 
     // =====================================
+    // BUTTON EVENTS
+    // =====================================
+
+    document
+        .getElementById("sendBtn")
+        .addEventListener(
+            "click",
+            handleSendOTP
+        );
+
+    document
+        .getElementById("verifyBtn")
+        .addEventListener(
+            "click",
+            handleVerifyOTP
+        );
+
+    // =====================================
     // SEND OTP
     // =====================================
+
     async function handleSendOTP() {
 
         const email =
@@ -317,6 +344,7 @@
         // =========================
         // VALIDATION
         // =========================
+
         if (!email) {
 
             msg.style.color = "red";
@@ -336,7 +364,7 @@
         try {
 
             const res = await fetch(
-                "https://dawa-duniya-otp.vercel.app/send-otp",
+                `${API_URL}/send-otp`,
                 {
                     method: "POST",
 
@@ -406,8 +434,9 @@
 
             msg.innerText =
                 "❌ Server Error";
+        }
 
-        } finally {
+        finally {
 
             loader.style.display =
                 "none";
@@ -420,6 +449,7 @@
     // =====================================
     // VERIFY OTP
     // =====================================
+
     async function handleVerifyOTP() {
 
         const userOtp =
@@ -451,7 +481,7 @@
         try {
 
             const res = await fetch(
-                "https://dawa-duniya-otp.vercel.app/verify-otp",
+                `${API_URL}/verify-otp`,
                 {
                     method: "POST",
 

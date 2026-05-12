@@ -15,26 +15,39 @@ require("dotenv").config();
 const app = express();
 
 // ======================================================
-// ENV VARIABLES CHECK
+// ENV VARIABLES
 // ======================================================
+const PORT = process.env.PORT || 3000;
+
 const {
   JWT_SECRET,
   EMAIL_USER,
   EMAIL_PASS
 } = process.env;
 
+// ======================================================
+// ENV CHECK
+// ======================================================
 if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
   console.error("❌ Missing ENV variables");
+  process.exit(1);
 }
 
 // ======================================================
-// SECURITY MIDDLEWARES
+// SECURITY
 // ======================================================
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false
+  })
+);
 
 app.use(
   cors({
-    origin: true,
+    origin: [
+      "http://localhost:3000",
+      "https://dawa-duniya-otp.vercel.app"
+    ],
     credentials: true,
     methods: ["GET", "POST"]
   })
@@ -58,7 +71,7 @@ app.use(
 const otpLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
 
-  max: 3,
+  max: 100,
 
   standardHeaders: true,
 
@@ -67,7 +80,7 @@ const otpLimiter = rateLimit({
   message: {
     success: false,
     message:
-      "Too many OTP requests 😅 Try again after 5 minutes."
+      "Too many OTP requests 😅 Try again later."
   }
 });
 
@@ -90,12 +103,12 @@ const allowedDomains = [
 ];
 
 // ======================================================
-// OTP ATTEMPTS TRACKER
+// OTP ATTEMPTS
 // ======================================================
 const otpAttempts = {};
 
 // ======================================================
-// NODEMAILER CONFIG
+// NODEMAILER
 // ======================================================
 const transporter =
   nodemailer.createTransport({
@@ -108,18 +121,56 @@ const transporter =
   });
 
 // ======================================================
-// HEALTH ROUTE
+// VERIFY SMTP
 // ======================================================
+transporter.verify((error) => {
+  if (error) {
+    console.log("❌ SMTP ERROR");
+    console.log(error);
+  } else {
+    console.log("✅ SMTP SERVER READY");
+  }
+});
+
+// ======================================================
+// HEALTH ROUTE
+// ==================
+// ====================================
+
+app.get("/test-mail", async (req, res) => {
+
+  try {
+
+    await transporter.sendMail({
+      from: EMAIL_USER,
+      to: EMAIL_USER,
+      subject: "SMTP TEST",
+      text: "Dawa Duniya SMTP Working"
+    });
+
+    console.log("✅ TEST MAIL SENT");
+
+    res.send("MAIL SENT");
+
+  } catch (err) {
+
+    console.log("❌ TEST MAIL ERROR");
+
+    console.log(err);
+
+    res.send("MAIL FAILED");
+  }
+});
 app.get("/health", (req, res) => {
   return res.status(200).json({
     success: true,
     message:
-      "🚀 Dawa Duniya Secure Backend Running"
+      "🚀 Dawa Duniya Backend Running"
   });
 });
 
 // ======================================================
-// SEND OTP ROUTE
+// SEND OTP
 // ======================================================
 app.post(
   "/send-otp",
@@ -139,7 +190,7 @@ app.post(
       }
 
       // ==========================================
-      // EMAIL FORMAT CHECK
+      // EMAIL FORMAT
       // ==========================================
       if (!emailRegex.test(email)) {
         return res.status(400).json({
@@ -160,10 +211,6 @@ app.post(
       if (
         !allowedDomains.includes(domain)
       ) {
-        console.log(
-          `❌ Blocked Domain: ${domain}`
-        );
-
         return res.status(400).json({
           success: false,
           message:
@@ -213,7 +260,7 @@ app.post(
         await bcrypt.hash(otp, 10);
 
       // ==========================================
-      // CREATE VERIFY TOKEN
+      // VERIFY TOKEN
       // ==========================================
       const vToken = jwt.sign(
         {
@@ -261,7 +308,7 @@ app.post(
       });
 
       console.log(
-        `✅ OTP Sent To ${email}`
+        `✅ OTP SENT TO ${email}`
       );
 
       return res.status(200).json({
@@ -273,10 +320,10 @@ app.post(
       });
 
     } catch (err) {
-      console.error(
-        "❌ Send OTP Error:",
-        err.message
-      );
+
+      console.log("❌ SEND OTP ERROR");
+
+      console.log(err);
 
       return res.status(500).json({
         success: false,
@@ -288,14 +335,17 @@ app.post(
 );
 
 // ======================================================
-// VERIFY OTP ROUTE
+// VERIFY OTP
 // ======================================================
 app.post(
   "/verify-otp",
   async (req, res) => {
     try {
-      const { userOtp, vToken } =
-        req.body;
+
+      const {
+        userOtp,
+        vToken
+      } = req.body;
 
       // ==========================================
       // REQUIRED CHECK
@@ -309,7 +359,7 @@ app.post(
       }
 
       // ==========================================
-      // VERIFY JWT TOKEN
+      // VERIFY TOKEN
       // ==========================================
       const decoded = jwt.verify(
         vToken,
@@ -317,7 +367,7 @@ app.post(
       );
 
       // ==========================================
-      // OTP ATTEMPTS CHECK
+      // ATTEMPTS
       // ==========================================
       if (
         !otpAttempts[decoded.email]
@@ -340,7 +390,7 @@ app.post(
       }
 
       // ==========================================
-      // COMPARE HASHED OTP
+      // OTP COMPARE
       // ==========================================
       const isMatch =
         await bcrypt.compare(
@@ -349,6 +399,7 @@ app.post(
         );
 
       if (!isMatch) {
+
         otpAttempts[
           decoded.email
         ]++;
@@ -383,7 +434,7 @@ app.post(
       );
 
       // ==========================================
-      // SECURE COOKIE
+      // COOKIE
       // ==========================================
       res.cookie(
         "dawaToken",
@@ -391,7 +442,7 @@ app.post(
         {
           httpOnly: true,
 
-          secure: true,
+          secure: false,
 
           sameSite: "strict",
 
@@ -401,7 +452,7 @@ app.post(
       );
 
       console.log(
-        `✅ Login Success: ${decoded.email}`
+        `✅ LOGIN SUCCESS ${decoded.email}`
       );
 
       return res.status(200).json({
@@ -410,10 +461,12 @@ app.post(
       });
 
     } catch (err) {
-      console.error(
-        "❌ Verify OTP Error:",
-        err.message
+
+      console.log(
+        "❌ VERIFY OTP ERROR"
       );
+
+      console.log(err);
 
       return res.status(400).json({
         success: false,
@@ -425,9 +478,10 @@ app.post(
 );
 
 // ======================================================
-// LOGOUT ROUTE
+// LOGOUT
 // ======================================================
 app.post("/logout", (req, res) => {
+
   res.clearCookie("dawaToken");
 
   return res.status(200).json({
@@ -438,9 +492,10 @@ app.post("/logout", (req, res) => {
 });
 
 // ======================================================
-// DEFAULT ROUTE
+// HOME ROUTE
 // ======================================================
 app.get("/", (req, res) => {
+
   res.sendFile(
     path.join(
       __dirname,
@@ -451,9 +506,10 @@ app.get("/", (req, res) => {
 });
 
 // ======================================================
-// 404 HANDLER
+// 404 ROUTE
 // ======================================================
 app.use((req, res) => {
+
   return res.status(404).json({
     success: false,
     message:
@@ -462,14 +518,16 @@ app.use((req, res) => {
 });
 
 // ======================================================
-// GLOBAL ERROR HANDLER
+// GLOBAL ERROR
 // ======================================================
 app.use(
   (err, req, res, next) => {
-    console.error(
-      "❌ Global Error:",
-      err
+
+    console.log(
+      "❌ GLOBAL ERROR"
     );
+
+    console.log(err);
 
     return res.status(500).json({
       success: false,
@@ -480,6 +538,19 @@ app.use(
 );
 
 // ======================================================
-// EXPORT APP FOR VERCEL
+// EXPORT
 // ======================================================
 module.exports = app;
+
+// ======================================================
+// LOCAL SERVER
+// ======================================================
+if (process.env.NODE_ENV !== "production") {
+
+  app.listen(PORT, () => {
+
+    console.log(
+      `🚀 SERVER RUNNING ON ${PORT}`
+    );
+  });
+}
