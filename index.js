@@ -36,11 +36,7 @@ if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
 // ======================================================
 // SECURITY
 // ======================================================
-app.use(
-  helmet({
-    contentSecurityPolicy: false
-  })
-);
+app.use(helmet());
 
 app.use(
   cors({
@@ -48,8 +44,10 @@ app.use(
       "http://localhost:3000",
       "https://dawa-duniya-otp.vercel.app"
     ],
-    credentials: true,
-    methods: ["GET", "POST"]
+
+    methods: ["GET", "POST"],
+
+    credentials: true
   })
 );
 
