@@ -14,32 +14,29 @@ require("dotenv").config();
 
 const app = express();
 
-// ==============================
-// ENV CHECK
-// ==============================
-if (
-  !process.env.JWT_SECRET ||
-  !process.env.EMAIL_USER ||
-  !process.env.EMAIL_PASS
-) {
+// ======================================================
+// ENV VARIABLES CHECK
+// ======================================================
+const {
+  JWT_SECRET,
+  EMAIL_USER,
+  EMAIL_PASS
+} = process.env;
+
+if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
   console.error("❌ Missing ENV variables");
 }
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-// ==============================
-// SECURITY MIDDLEWARE
-// ==============================
+// ======================================================
+// SECURITY MIDDLEWARES
+// ======================================================
 app.use(helmet());
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://dawa-duniya-otp.vercel.app"
-    ],
-    methods: ["GET", "POST"],
-    credentials: true
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST"]
   })
 );
 
@@ -55,29 +52,30 @@ app.use(
   )
 );
 
-// ==============================
-// RATE LIMIT
-// ==============================
+// ======================================================
+// RATE LIMITER
+// ======================================================
 const otpLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
 
   max: 3,
 
+  standardHeaders: true,
+
+  legacyHeaders: false,
+
   message: {
     success: false,
     message:
       "Too many OTP requests 😅 Try again after 5 minutes."
-  },
-
-  standardHeaders: true,
-  legacyHeaders: false
+  }
 });
 
 app.use("/send-otp", otpLimiter);
 
-// ==============================
+// ======================================================
 // EMAIL VALIDATION
-// ==============================
+// ======================================================
 const emailRegex =
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -91,31 +89,27 @@ const allowedDomains = [
   "protonmail.com"
 ];
 
-// ==============================
-// OTP ATTEMPTS
-// ==============================
+// ======================================================
+// OTP ATTEMPTS TRACKER
+// ======================================================
 const otpAttempts = {};
 
-// ==============================
-// NODEMAILER
-// ==============================
+// ======================================================
+// NODEMAILER CONFIG
+// ======================================================
 const transporter =
   nodemailer.createTransport({
-    host: "smtp.gmail.com",
-
-    port: 465,
-
-    secure: true,
+    service: "gmail",
 
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
+      user: EMAIL_USER,
+      pass: EMAIL_PASS
     }
   });
 
-// ==============================
+// ======================================================
 // HEALTH ROUTE
-// ==============================
+// ======================================================
 app.get("/health", (req, res) => {
   return res.status(200).json({
     success: true,
@@ -124,18 +118,18 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ==============================
-// SEND OTP
-// ==============================
+// ======================================================
+// SEND OTP ROUTE
+// ======================================================
 app.post(
   "/send-otp",
   async (req, res) => {
     try {
       const { email } = req.body;
 
-      // ==========================
+      // ==========================================
       // EMAIL REQUIRED
-      // ==========================
+      // ==========================================
       if (!email) {
         return res.status(400).json({
           success: false,
@@ -144,9 +138,9 @@ app.post(
         });
       }
 
-      // ==========================
-      // EMAIL FORMAT
-      // ==========================
+      // ==========================================
+      // EMAIL FORMAT CHECK
+      // ==========================================
       if (!emailRegex.test(email)) {
         return res.status(400).json({
           success: false,
@@ -155,14 +149,14 @@ app.post(
         });
       }
 
+      // ==========================================
+      // DOMAIN CHECK
+      // ==========================================
       const domain =
         email
           .split("@")[1]
           .toLowerCase();
 
-      // ==========================
-      // DOMAIN CHECK
-      // ==========================
       if (
         !allowedDomains.includes(domain)
       ) {
@@ -177,9 +171,9 @@ app.post(
         });
       }
 
-      // ==========================
+      // ==========================================
       // DISPOSABLE EMAIL CHECK
-      // ==========================
+      // ==========================================
       try {
         const response =
           await axios.get(
@@ -196,15 +190,15 @@ app.post(
               "Temporary email allowed nahi hai!"
           });
         }
-      } catch (err) {
+      } catch (apiError) {
         console.log(
-          "⚠ Disposable API failed"
+          "⚠ Disposable email API failed"
         );
       }
 
-      // ==========================
+      // ==========================================
       // OTP GENERATE
-      // ==========================
+      // ==========================================
       const otp = String(
         Math.floor(
           100000 +
@@ -212,15 +206,15 @@ app.post(
         )
       );
 
-      // ==========================
+      // ==========================================
       // HASH OTP
-      // ==========================
+      // ==========================================
       const hashedOtp =
         await bcrypt.hash(otp, 10);
 
-      // ==========================
-      // VERIFY TOKEN
-      // ==========================
+      // ==========================================
+      // CREATE VERIFY TOKEN
+      // ==========================================
       const vToken = jwt.sign(
         {
           email,
@@ -234,11 +228,11 @@ app.post(
         }
       );
 
-      // ==========================
-      // SEND EMAIL
-      // ==========================
+      // ==========================================
+      // SEND MAIL
+      // ==========================================
       await transporter.sendMail({
-        from: `"Dawa Duniya" <${process.env.EMAIL_USER}>`,
+        from: `"Dawa Duniya" <${EMAIL_USER}>`,
 
         to: email,
 
@@ -247,7 +241,7 @@ app.post(
 
         html: `
         <div style="font-family:Arial;padding:20px">
-          
+
           <h2>
             Dawa Duniya OTP Verification
           </h2>
@@ -267,7 +261,7 @@ app.post(
       });
 
       console.log(
-        `✅ OTP Sent to ${email}`
+        `✅ OTP Sent To ${email}`
       );
 
       return res.status(200).json({
@@ -281,7 +275,7 @@ app.post(
     } catch (err) {
       console.error(
         "❌ Send OTP Error:",
-        err
+        err.message
       );
 
       return res.status(500).json({
@@ -293,9 +287,9 @@ app.post(
   }
 );
 
-// ==============================
-// VERIFY OTP
-// ==============================
+// ======================================================
+// VERIFY OTP ROUTE
+// ======================================================
 app.post(
   "/verify-otp",
   async (req, res) => {
@@ -303,6 +297,9 @@ app.post(
       const { userOtp, vToken } =
         req.body;
 
+      // ==========================================
+      // REQUIRED CHECK
+      // ==========================================
       if (!userOtp || !vToken) {
         return res.status(400).json({
           success: false,
@@ -311,17 +308,17 @@ app.post(
         });
       }
 
-      // ==========================
-      // VERIFY TOKEN
-      // ==========================
+      // ==========================================
+      // VERIFY JWT TOKEN
+      // ==========================================
       const decoded = jwt.verify(
         vToken,
         JWT_SECRET
       );
 
-      // ==========================
-      // OTP ATTEMPTS
-      // ==========================
+      // ==========================================
+      // OTP ATTEMPTS CHECK
+      // ==========================================
       if (
         !otpAttempts[decoded.email]
       ) {
@@ -342,9 +339,9 @@ app.post(
         });
       }
 
-      // ==========================
-      // COMPARE OTP
-      // ==========================
+      // ==========================================
+      // COMPARE HASHED OTP
+      // ==========================================
       const isMatch =
         await bcrypt.compare(
           String(userOtp),
@@ -363,14 +360,16 @@ app.post(
         });
       }
 
+      // ==========================================
       // RESET ATTEMPTS
+      // ==========================================
       otpAttempts[
         decoded.email
       ] = 0;
 
-      // ==========================
+      // ==========================================
       // LOGIN TOKEN
-      // ==========================
+      // ==========================================
       const loginToken = jwt.sign(
         {
           email: decoded.email
@@ -383,9 +382,9 @@ app.post(
         }
       );
 
-      // ==========================
+      // ==========================================
       // SECURE COOKIE
-      // ==========================
+      // ==========================================
       res.cookie(
         "dawaToken",
         loginToken,
@@ -425,23 +424,24 @@ app.post(
   }
 );
 
-// ==============================
-// LOGOUT
-// ==============================
+// ======================================================
+// LOGOUT ROUTE
+// ======================================================
 app.post("/logout", (req, res) => {
   res.clearCookie("dawaToken");
 
   return res.status(200).json({
     success: true,
-    message: "Logout successful"
+    message:
+      "Logout successful"
   });
 });
 
-// ==============================
-// 404 ROUTE
-// ==============================
-app.use((req, res) => {
-  res.status(404).sendFile(
+// ======================================================
+// DEFAULT ROUTE
+// ======================================================
+app.get("/", (req, res) => {
+  res.sendFile(
     path.join(
       __dirname,
       "public",
@@ -450,9 +450,20 @@ app.use((req, res) => {
   );
 });
 
-// ==============================
+// ======================================================
+// 404 HANDLER
+// ======================================================
+app.use((req, res) => {
+  return res.status(404).json({
+    success: false,
+    message:
+      "Route not found"
+  });
+});
+
+// ======================================================
 // GLOBAL ERROR HANDLER
-// ==============================
+// ======================================================
 app.use(
   (err, req, res, next) => {
     console.error(
@@ -468,4 +479,7 @@ app.use(
   }
 );
 
+// ======================================================
+// EXPORT APP FOR VERCEL
+// ======================================================
 module.exports = app;
