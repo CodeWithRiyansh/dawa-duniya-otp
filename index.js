@@ -9,33 +9,39 @@ const rateLimit = require("express-rate-limit");
 const morgan = require("morgan");
 const bcrypt = require("bcryptjs");
 const cookieParser = require("cookie-parser");
+
 require("dotenv").config();
 
 const app = express();
 
 // ==============================
-// CONFIG
+// ENV CHECK
 // ==============================
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  console.error("❌ JWT_SECRET missing in .env");
-  process.exit(1);
+if (
+  !process.env.JWT_SECRET ||
+  !process.env.EMAIL_USER ||
+  !process.env.EMAIL_PASS
+) {
+  console.error("❌ Missing ENV variables");
 }
 
+const JWT_SECRET = process.env.JWT_SECRET;
+
 // ==============================
-// SECURITY MIDDLEWARES
+// SECURITY MIDDLEWARE
 // ==============================
 app.use(helmet());
 
-app.use(cors({
-  origin: [
-    "https://your-project.vercel.app",
-    "http://localhost:3000"
-  ],
-  methods: ["GET", "POST"],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://dawa-duniya-otp.vercel.app"
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
+  })
+);
 
 app.use(express.json({ limit: "10kb" }));
 
@@ -43,19 +49,24 @@ app.use(cookieParser());
 
 app.use(morgan("dev"));
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(
+  express.static(
+    path.join(__dirname, "public")
+  )
+);
 
 // ==============================
-// RATE LIMITING
+// RATE LIMIT
 // ==============================
 const otpLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
+
   max: 3,
 
   message: {
     success: false,
     message:
-      "Too many OTP requests 😅 5 minute baad try karo."
+      "Too many OTP requests 😅 Try again after 5 minutes."
   },
 
   standardHeaders: true,
@@ -81,142 +92,165 @@ const allowedDomains = [
 ];
 
 // ==============================
-// OTP ATTEMPT TRACKER
+// OTP ATTEMPTS
 // ==============================
 const otpAttempts = {};
 
 // ==============================
 // NODEMAILER
 // ==============================
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+const transporter =
+  nodemailer.createTransport({
+    host: "smtp.gmail.com",
 
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+    port: 465,
 
-transporter.verify((error) => {
-  if (error) {
-    console.log("❌ SMTP Error:", error);
-  } else {
-    console.log("✅ SMTP Server Ready");
-  }
-});
+    secure: true,
+
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
 
 // ==============================
 // HEALTH ROUTE
 // ==============================
 app.get("/health", (req, res) => {
-  res.status(200).json({
+  return res.status(200).json({
     success: true,
-    message: "🚀 Dawa Duniya Secure Backend Running"
+    message:
+      "🚀 Dawa Duniya Secure Backend Running"
   });
 });
 
 // ==============================
 // SEND OTP
 // ==============================
-app.post("/send-otp", async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    // ==========================
-    // VALIDATIONS
-    // ==========================
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email required hai!"
-      });
-    }
-
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid email format!"
-      });
-    }
-
-    const domain =
-      email.split("@")[1].toLowerCase();
-
-    // ==========================
-    // DOMAIN WHITELIST
-    // ==========================
-    if (!allowedDomains.includes(domain)) {
-      console.log(`❌ Blocked Domain: ${domain}`);
-
-      return res.status(400).json({
-        success: false,
-        message:
-          "Nice try bro 😏 Trusted email use karo."
-      });
-    }
-
-    // ==========================
-    // TEMP EMAIL DETECTION
-    // ==========================
+app.post(
+  "/send-otp",
+  async (req, res) => {
     try {
-      const response = await axios.get(
-        `https://open.kickbox.com/v1/disposable/${domain}`
-      );
+      const { email } = req.body;
 
-      if (response.data.disposable === true) {
+      // ==========================
+      // EMAIL REQUIRED
+      // ==========================
+      if (!email) {
         return res.status(400).json({
           success: false,
           message:
-            "Temporary email allowed nahi hai!"
+            "Email required hai!"
         });
       }
-    } catch (apiErr) {
-      console.log(
-        "⚠ Disposable API failed, using whitelist only"
-      );
-    }
 
-    // ==========================
-    // OTP GENERATE
-    // ==========================
-    const otp = String(
-      Math.floor(100000 + Math.random() * 900000)
-    );
-
-    // ==========================
-    // HASH OTP
-    // ==========================
-    const hashedOtp = await bcrypt.hash(otp, 10);
-
-    // ==========================
-    // VERIFY TOKEN
-    // ==========================
-    const vToken = jwt.sign(
-      {
-        email,
-        otp: hashedOtp
-      },
-      JWT_SECRET,
-      {
-        expiresIn: "5m"
+      // ==========================
+      // EMAIL FORMAT
+      // ==========================
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid email format!"
+        });
       }
-    );
 
-    // ==========================
-    // SEND EMAIL
-    // ==========================
-    await transporter.sendMail({
-      from: `"Dawa Duniya" <${process.env.EMAIL_USER}>`,
+      const domain =
+        email
+          .split("@")[1]
+          .toLowerCase();
 
-      to: email,
+      // ==========================
+      // DOMAIN CHECK
+      // ==========================
+      if (
+        !allowedDomains.includes(domain)
+      ) {
+        console.log(
+          `❌ Blocked Domain: ${domain}`
+        );
 
-      subject: "Dawa Duniya Login OTP",
+        return res.status(400).json({
+          success: false,
+          message:
+            "Nice try bro 😏 Trusted email use karo."
+        });
+      }
 
-      html: `
+      // ==========================
+      // DISPOSABLE EMAIL CHECK
+      // ==========================
+      try {
+        const response =
+          await axios.get(
+            `https://open.kickbox.com/v1/disposable/${domain}`
+          );
+
+        if (
+          response.data.disposable ===
+          true
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Temporary email allowed nahi hai!"
+          });
+        }
+      } catch (err) {
+        console.log(
+          "⚠ Disposable API failed"
+        );
+      }
+
+      // ==========================
+      // OTP GENERATE
+      // ==========================
+      const otp = String(
+        Math.floor(
+          100000 +
+            Math.random() * 900000
+        )
+      );
+
+      // ==========================
+      // HASH OTP
+      // ==========================
+      const hashedOtp =
+        await bcrypt.hash(otp, 10);
+
+      // ==========================
+      // VERIFY TOKEN
+      // ==========================
+      const vToken = jwt.sign(
+        {
+          email,
+          otp: hashedOtp
+        },
+
+        JWT_SECRET,
+
+        {
+          expiresIn: "5m"
+        }
+      );
+
+      // ==========================
+      // SEND EMAIL
+      // ==========================
+      await transporter.sendMail({
+        from: `"Dawa Duniya" <${process.env.EMAIL_USER}>`,
+
+        to: email,
+
+        subject:
+          "Dawa Duniya Login OTP",
+
+        html: `
         <div style="font-family:Arial;padding:20px">
-          <h2>Dawa Duniya OTP Verification</h2>
+          
+          <h2>
+            Dawa Duniya OTP Verification
+          </h2>
 
           <p>Your OTP is:</p>
 
@@ -227,132 +261,169 @@ app.post("/send-otp", async (req, res) => {
           <p>
             Ye OTP sirf 5 minute tak valid hai.
           </p>
+
         </div>
-      `
-    });
+        `
+      });
 
-    console.log(`✅ OTP Sent to ${email}`);
+      console.log(
+        `✅ OTP Sent to ${email}`
+      );
 
-    return res.status(200).json({
-      success: true,
-      message: "OTP sent successfully!",
-      vToken
-    });
+      return res.status(200).json({
+        success: true,
+        message:
+          "OTP sent successfully!",
 
-  } catch (err) {
-    console.error("❌ Send OTP Error:", err);
+        vToken
+      });
 
-    return res.status(500).json({
-      success: false,
-      message:
-        "OTP bhejne mein error aaya!"
-    });
+    } catch (err) {
+      console.error(
+        "❌ Send OTP Error:",
+        err
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "OTP bhejne mein error aaya!"
+      });
+    }
   }
-});
+);
 
 // ==============================
 // VERIFY OTP
 // ==============================
-app.post("/verify-otp", async (req, res) => {
-  try {
-    const { userOtp, vToken } = req.body;
+app.post(
+  "/verify-otp",
+  async (req, res) => {
+    try {
+      const { userOtp, vToken } =
+        req.body;
 
-    if (!userOtp || !vToken) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "OTP aur token required hai!"
-      });
-    }
-
-    // ==========================
-    // VERIFY TOKEN
-    // ==========================
-    const decoded = jwt.verify(
-      vToken,
-      JWT_SECRET
-    );
-
-    // ==========================
-    // OTP ATTEMPT LIMIT
-    // ==========================
-    if (!otpAttempts[decoded.email]) {
-      otpAttempts[decoded.email] = 0;
-    }
-
-    if (otpAttempts[decoded.email] >= 5) {
-      return res.status(429).json({
-        success: false,
-        message:
-          "Too many wrong OTP attempts 😅"
-      });
-    }
-
-    // ==========================
-    // COMPARE HASHED OTP
-    // ==========================
-    const isMatch = await bcrypt.compare(
-      String(userOtp),
-      decoded.otp
-    );
-
-    if (!isMatch) {
-      otpAttempts[decoded.email]++;
-
-      return res.status(400).json({
-        success: false,
-        message: "Galat OTP hai!"
-      });
-    }
-
-    // Reset attempts after success
-    otpAttempts[decoded.email] = 0;
-
-    // ==========================
-    // LOGIN TOKEN
-    // ==========================
-    const loginToken = jwt.sign(
-      {
-        email: decoded.email
-      },
-      JWT_SECRET,
-      {
-        expiresIn: "1h"
+      if (!userOtp || !vToken) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "OTP aur token required hai!"
+        });
       }
-    );
 
-    // ==========================
-    // SECURE COOKIE
-    // ==========================
-    res.cookie("dawaToken", loginToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      maxAge: 60 * 60 * 1000
-    });
+      // ==========================
+      // VERIFY TOKEN
+      // ==========================
+      const decoded = jwt.verify(
+        vToken,
+        JWT_SECRET
+      );
 
-    console.log(
-      `✅ Login Success: ${decoded.email}`
-    );
+      // ==========================
+      // OTP ATTEMPTS
+      // ==========================
+      if (
+        !otpAttempts[decoded.email]
+      ) {
+        otpAttempts[
+          decoded.email
+        ] = 0;
+      }
 
-    return res.status(200).json({
-      success: true,
-      token: loginToken
-    });
+      if (
+        otpAttempts[
+          decoded.email
+        ] >= 5
+      ) {
+        return res.status(429).json({
+          success: false,
+          message:
+            "Too many wrong OTP attempts 😅"
+        });
+      }
 
-  } catch (err) {
-    console.error(
-      "❌ Verify OTP Error:",
-      err.message
-    );
+      // ==========================
+      // COMPARE OTP
+      // ==========================
+      const isMatch =
+        await bcrypt.compare(
+          String(userOtp),
+          decoded.otp
+        );
 
-    return res.status(400).json({
-      success: false,
-      message:
-        "OTP expire ya invalid hai!"
-    });
+      if (!isMatch) {
+        otpAttempts[
+          decoded.email
+        ]++;
+
+        return res.status(400).json({
+          success: false,
+          message:
+            "Galat OTP hai!"
+        });
+      }
+
+      // RESET ATTEMPTS
+      otpAttempts[
+        decoded.email
+      ] = 0;
+
+      // ==========================
+      // LOGIN TOKEN
+      // ==========================
+      const loginToken = jwt.sign(
+        {
+          email: decoded.email
+        },
+
+        JWT_SECRET,
+
+        {
+          expiresIn: "1h"
+        }
+      );
+
+      // ==========================
+      // SECURE COOKIE
+      // ==========================
+      res.cookie(
+        "dawaToken",
+        loginToken,
+        {
+          httpOnly: true,
+
+          secure: true,
+
+          sameSite: "strict",
+
+          maxAge:
+            60 * 60 * 1000
+        }
+      );
+
+      console.log(
+        `✅ Login Success: ${decoded.email}`
+      );
+
+      return res.status(200).json({
+        success: true,
+        token: loginToken
+      });
+
+    } catch (err) {
+      console.error(
+        "❌ Verify OTP Error:",
+        err.message
+      );
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "OTP expire ya invalid hai!"
+      });
+    }
   }
-});
+);
 
 // ==============================
 // LOGOUT
@@ -367,22 +438,33 @@ app.post("/logout", (req, res) => {
 });
 
 // ==============================
-// 404 HANDLER
+// 404 ROUTE
 // ==============================
 app.use((req, res) => {
   res.status(404).sendFile(
-    path.join(__dirname, "public", "index.html")
+    path.join(
+      __dirname,
+      "public",
+      "index.html"
+    )
   );
 });
 
 // ==============================
 // GLOBAL ERROR HANDLER
 // ==============================
-app.use((err, req, res, next) => {
-  console.error("❌ Global Error:", err);
+app.use(
+  (err, req, res, next) => {
+    console.error(
+      "❌ Global Error:",
+      err
+    );
 
-  return res.status(500).json({
-    success: false,
-    message: "Internal Server Error"
-  });
-});
+    return res.status(500).json({
+      success: false,
+      message:
+        "Internal Server Error"
+    });
+  }
+);
+
