@@ -2,6 +2,7 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+const axios = require('axios'); // Naya domains check karne ke liye
 require('dotenv').config();
 
 const app = express();
@@ -11,16 +12,6 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// --- MOTO BLOCK LIST (Common Temp Mail Domains) ---
-const disposableDomains = [
-    '10minutemail.com', 'tempmail.com', 'guerrillamail.com', 'mailinator.com', 'getnada.com',
-    'dispostable.com', 'sharklasers.com', 'guerrillamailblock.com', 'guerrillamail.net',
-    'guerrillamail.org', 'guerrillamail.biz', 'spam4.me', 'grr.la', 'pokemail.net',
-    'vnet.ee', 'on0.biz', 'boximail.com', '0-mail.com', 'dropmail.me', 'yopmail.com',
-    'temp-mail.org', 'internal.ml', 'luxusmail.xyz', 'outlook.guru', 'tempmail.net'
-    // Aap isme aur bhi add kar sakte ho
-];
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
@@ -32,6 +23,8 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+// --- ROUTES ---
+
 app.post('/send-otp', async (req, res) => {
     try {
         const { email } = req.body;
@@ -40,15 +33,23 @@ app.post('/send-otp', async (req, res) => {
             return res.status(400).json({ success: false, message: "Sahi email format daalo!" });
         }
 
+        // --- REAL-TIME CHECK (FOR NEW TEMP MAILS) ---
         const domain = email.split('@')[1].toLowerCase();
-
-        // 1. Exact Match Check
-        // 2. Partial Match Check (Kayi baar subdomains hote hain)
-        const isFake = disposableDomains.some(d => domain.includes(d));
-
-        if (isFake) {
-            console.log(`Blocked: ${email}`);
-            return res.status(400).json({ success: false, message: "Bhai, ye temporary email yahan nahi chalega!" });
+        
+        try {
+            // Hum ek public list se check kar rahe hain jo daily update hoti hai
+            const response = await axios.get(`https://open.kickbox.com/v1/disposable/${domain}`);
+            
+            if (response.data.disposable === true) {
+                console.log(`Blocked Dynamic Temp Mail: ${email}`);
+                return res.status(400).json({ success: false, message: "Bhai, ye temporary email nahi chalega!" });
+            }
+        } catch (apiErr) {
+            // Agar API down ho, toh code crash na ho, isliye backup list check karein
+            const backupList = ['gcervera.com', '10minutemail.com', 'tempmail.com'];
+            if (backupList.includes(domain)) {
+                return res.status(400).json({ success: false, message: "Fake email blocked!" });
+            }
         }
 
         const otp = Math.floor(100000 + Math.random() * 900000);
@@ -67,6 +68,8 @@ app.post('/send-otp', async (req, res) => {
         res.status(500).json({ success: false, message: "Email bhenjne mein error aaya!" });
     }
 });
+
+// ... Baki code (verify-otp aur get route) same rahega ...
 
 app.post('/verify-otp', (req, res) => {
     const { userOtp, vToken } = req.body;
@@ -88,4 +91,4 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server on ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Dawa Duniya Secure on ${PORT}`));
