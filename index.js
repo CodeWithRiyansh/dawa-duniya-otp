@@ -26,7 +26,7 @@ if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
 }
 
 // ======================================================
-// SECURITY (Helmet FIXED)
+// SECURITY
 // ======================================================
 app.use(
   helmet({
@@ -51,7 +51,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://dawa-duniya-otp.vercel.app"
+      "https://dawa-duniya-otp.vercel.app",
     ],
     methods: ["GET", "POST"],
     credentials: true,
@@ -67,7 +67,7 @@ app.use(morgan("dev"));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ======================================================
-// RATE LIMIT (OTP SAFE)
+// RATE LIMIT (GLOBAL OTP PROTECTION)
 // ======================================================
 const otpLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
@@ -85,15 +85,12 @@ app.use("/send-otp", otpLimiter);
 // ======================================================
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const allowedDomains = [
-  "gmail.com",
-  "yahoo.com",
-  "outlook.com",
-  "hotmail.com",
-  "icloud.com",
-  "rediffmail.com",
-  "protonmail.com",
-];
+// ======================================================
+// TRUST + TRACKING SYSTEM
+// ======================================================
+const otpAttemptsByEmail = new Map();
+const otpAttemptsByIP = new Map();
+const trustScore = new Map();
 
 // ======================================================
 // EMAIL TRANSPORT
@@ -107,8 +104,49 @@ const transporter = nodemailer.createTransport({
 });
 
 // ======================================================
-// HEALTH CHECK
+// HELPERS
 // ======================================================
+function getClientIP(req) {
+  return (
+    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    req.socket.remoteAddress
+  );
+}
+
+async function isDisposableEmail(email) {
+  try {
+    const res = await axios.get(
+      `https://open.kickbox.com/v1/disposable/${email}`
+    );
+    return res.data.disposable;
+  } catch (err) {
+    return false; // fail-safe allow
+  }
+}
+
+function updateTrust(email, domain, disposable) {
+  let score = trustScore.get(email) || 0;
+
+  const trustedDomains = [
+    "gmail.com",
+    "outlook.com",
+    "yahoo.com",
+    "icloud.com",
+    "hotmail.com",
+  ];
+
+  if (trustedDomains.includes(domain)) score += 2;
+  if (disposable) score -= 3;
+
+  trustScore.set(email, score);
+  return score;
+}
+
+// ======================================================
+// ROUTES
+// ======================================================
+
+// HEALTH
 app.get("/health", (req, res) => {
   res.json({
     success: true,
@@ -116,9 +154,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ======================================================
 // HOME
-// ======================================================
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -127,45 +163,75 @@ app.get("/", (req, res) => {
 });
 
 // ======================================================
-// SEND OTP
+// SEND OTP (UPGRADED ENGINE)
 // ======================================================
 app.post("/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
+    const ip = getClientIP(req);
 
+    // STEP 1: format check
     if (!email || !emailRegex.test(email)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid email",
+        message: "Invalid email format",
       });
     }
 
     const domain = email.split("@")[1].toLowerCase();
 
-    if (!allowedDomains.includes(domain)) {
-      return res.status(400).json({
+    // ======================================================
+    // STEP 2: RATE LIMITING (EMAIL + IP)
+    // ======================================================
+    const emailCount = otpAttemptsByEmail.get(email) || 0;
+    const ipCount = otpAttemptsByIP.get(ip) || 0;
+
+    if (emailCount >= 3) {
+      return res.status(429).json({
         success: false,
-        message: "Only trusted email providers allowed",
+        message: "Too many OTP requests for this email",
       });
     }
 
-    // Kickbox disposable check (FIXED)
-    try {
-      const response = await axios.get(
-        `https://open.kickbox.com/v1/disposable/${email}`
-      );
-
-      if (response.data.disposable) {
-        return res.status(400).json({
-          success: false,
-          message: "Temporary email not allowed",
-        });
-      }
-    } catch (err) {
-      console.log("Kickbox skipped");
+    if (ipCount >= 10) {
+      return res.status(429).json({
+        success: false,
+        message: "Too many requests from this IP",
+      });
     }
 
-    // OTP generate
+    otpAttemptsByEmail.set(email, emailCount + 1);
+    otpAttemptsByIP.set(ip, ipCount + 1);
+
+    // ======================================================
+    // STEP 3: DISPOSABLE CHECK
+    // ======================================================
+    const disposable = await isDisposableEmail(email);
+
+    // ======================================================
+    // STEP 4: TRUST SCORE
+    // ======================================================
+    const score = updateTrust(email, domain, disposable);
+
+    // ======================================================
+    // STEP 5: DECISION ENGINE
+    // ======================================================
+    if (disposable && score < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Temporary email addresses are not allowed",
+      });
+    }
+
+    // CAPTCHA TRIGGER FLAG (frontend use)
+    let requireCaptcha = false;
+    if (score <= 0 || disposable) {
+      requireCaptcha = true;
+    }
+
+    // ======================================================
+    // OTP GENERATION
+    // ======================================================
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const hashedOtp = await bcrypt.hash(otp, 10);
 
@@ -175,7 +241,9 @@ app.post("/send-otp", async (req, res) => {
       { expiresIn: "5m" }
     );
 
-    // send email
+    // ======================================================
+    // SEND EMAIL
+    // ======================================================
     await transporter.sendMail({
       from: `"Dawa Duniya" <${EMAIL_USER}>`,
       to: email,
@@ -193,8 +261,9 @@ app.post("/send-otp", async (req, res) => {
     return res.json({
       success: true,
       vToken,
+      requireCaptcha,
+      trustScore: score,
     });
-
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -232,6 +301,10 @@ app.post("/verify-otp", async (req, res) => {
       });
     }
 
+    // update trust after success
+    const current = trustScore.get(decoded.email) || 0;
+    trustScore.set(decoded.email, current + 1);
+
     const loginToken = jwt.sign(
       { email: decoded.email },
       JWT_SECRET,
@@ -249,7 +322,6 @@ app.post("/verify-otp", async (req, res) => {
       success: true,
       token: loginToken,
     });
-
   } catch (err) {
     return res.status(400).json({
       success: false,
