@@ -26,20 +26,45 @@ app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-// ================= SECURITY =================
+// ================= FIXED CSP (IMPORTANT FOR GOOGLE FONTS) =================
 app.use(
   helmet({
-    contentSecurityPolicy: false, // frontend flexibility (Vercel safe)
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com"
+        ],
+        styleSrcElem: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com"
+        ],
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com"
+        ],
+        imgSrc: ["'self'", "data:", "https://*"],
+        connectSrc: [
+          "'self'",
+          "https://open.kickbox.com"
+        ],
+        objectSrc: ["'none'"]
+      }
+    }
   })
 );
 
-// ================= CORS (FIXED FOR VERCEL) =================
+// ================= CORS =================
 app.use(
   cors({
     origin: [
       "http://localhost:3000",
       "http://127.0.0.1:5500",
-      "https://dawa-duniya-otp.vercel.app",
+      "https://dawa-duniya-otp.vercel.app"
     ],
     methods: ["GET", "POST"],
     credentials: true,
@@ -47,18 +72,15 @@ app.use(
 );
 
 // ================= RATE LIMIT =================
-const otpLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
-  max: 10,
-  message: {
-    success: false,
-    message: "Too many requests. Try again later.",
-  },
-});
+app.use(
+  "/send-otp",
+  rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 10,
+  })
+);
 
-app.use("/send-otp", otpLimiter);
-
-// ================= EMAIL TRANSPORT =================
+// ================= EMAIL =================
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -79,7 +101,7 @@ const allowedDomains = [
   "protonmail.com",
 ];
 
-// ================= HEALTH CHECK =================
+// ================= HEALTH =================
 app.get("/health", (req, res) => {
   res.json({
     success: true,
@@ -108,7 +130,7 @@ app.post("/send-otp", async (req, res) => {
       });
     }
 
-    // ================= KICKBOX CHECK =================
+    // Kickbox check
     try {
       const r = await axios.get(
         `https://open.kickbox.com/v1/disposable/${email}`
@@ -120,49 +142,36 @@ app.post("/send-otp", async (req, res) => {
           message: "Temporary email not allowed",
         });
       }
-    } catch (err) {
-      console.log("Kickbox skipped");
-    }
+    } catch {}
 
-    // ================= OTP GENERATION =================
+    // OTP
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const hashedOtp = await bcrypt.hash(otp, 10);
 
     const vToken = jwt.sign(
-      {
-        email: email.toLowerCase(),
-        otp: hashedOtp,
-      },
+      { email: email.toLowerCase(), otp: hashedOtp },
       JWT_SECRET,
       { expiresIn: "5m" }
     );
 
-    // ================= SEND EMAIL =================
     await transporter.sendMail({
       from: EMAIL_USER,
       to: email,
-      subject: "Dawa Duniya OTP Verification",
+      subject: "OTP Verification",
       html: `
         <div style="font-family:Arial;padding:20px">
           <h2>OTP Verification</h2>
-          <p>Your OTP is:</p>
           <h1 style="color:#00a884">${otp}</h1>
           <p>Valid for 5 minutes</p>
         </div>
       `,
     });
 
-    return res.json({
-      success: true,
-      vToken,
-    });
+    res.json({ success: true, vToken });
 
   } catch (err) {
     console.log(err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -179,48 +188,36 @@ app.post("/verify-otp", async (req, res) => {
     }
 
     let decoded;
-
     try {
       decoded = jwt.verify(vToken, JWT_SECRET);
-    } catch (err) {
+    } catch {
       return res.status(400).json({
         success: false,
-        message: "OTP expired or invalid token",
+        message: "OTP expired",
       });
     }
 
-    const isMatch = await bcrypt.compare(
+    const match = await bcrypt.compare(
       String(userOtp),
       decoded.otp
     );
 
-    if (!isMatch) {
+    if (!match) {
       return res.status(400).json({
         success: false,
         message: "Invalid OTP",
       });
     }
 
-    const loginToken = jwt.sign(
+    const token = jwt.sign(
       { email: decoded.email },
       JWT_SECRET,
       { expiresIn: "1h" }
     );
 
-    res.cookie("dawaToken", loginToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 3600000,
-    });
-
-    return res.json({
-      success: true,
-      token: loginToken,
-    });
+    return res.json({ success: true, token });
 
   } catch (err) {
-    console.log(err);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -228,5 +225,4 @@ app.post("/verify-otp", async (req, res) => {
   }
 });
 
-// ================= EXPORT FOR VERCEL =================
 module.exports = app;
