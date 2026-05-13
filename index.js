@@ -15,194 +15,777 @@ require("dotenv").config();
 const app = express();
 
 // ======================================================
+// ENV
+// ======================================================
+
+const {
+  JWT_SECRET,
+  EMAIL_USER,
+  EMAIL_PASS,
+  ABSTRACT_API_KEY,
+  BASE_URL
+} = process.env;
+
+// ======================================================
 // ENV CHECK
 // ======================================================
-const { JWT_SECRET, EMAIL_USER, EMAIL_PASS, ABSTRACT_API_KEY, BASE_URL } = process.env;
 
-if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS || !BASE_URL) {
+if (
+  !JWT_SECRET ||
+  !EMAIL_USER ||
+  !EMAIL_PASS ||
+  !BASE_URL
+) {
+
   console.log("❌ Missing ENV variables");
+
   process.exit(1);
 }
 
 // ======================================================
-// MIDDLEWARE & SECURITY
+// SECURITY
 // ======================================================
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: "10kb" }));
-app.use(cookieParser());
-app.use(morgan("dev"));
-app.use(express.static(path.join(__dirname, "public")));
+
+app.use(
+  helmet({
+    contentSecurityPolicy:false
+  })
+);
 
 // ======================================================
-// RATE LIMITING (Double Click & Spam Protection)
+// CORS
 // ======================================================
+
+app.use(
+  cors({
+    origin:true,
+    credentials:true
+  })
+);
+
+// ======================================================
+// MIDDLEWARE
+// ======================================================
+
+app.use(express.json({ limit:"10kb" }));
+
+app.use(cookieParser());
+
+app.use(morgan("dev"));
+
+app.use(
+  express.static(
+    path.join(__dirname,"public")
+  )
+);
+
+// ======================================================
+// RATE LIMIT
+// ======================================================
+
 const otpLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 Minutes
-  max: 10,
-  message: { success: false, message: "Too many requests. Please try after 5 minutes." }
+
+  windowMs:5 * 60 * 1000,
+
+  max:10,
+
+  message:{
+    success:false,
+    message:"Too many requests"
+  }
 });
 
+app.use("/send-otp", otpLimiter);
+
+app.use("/send-link", otpLimiter);
+
 // ======================================================
-// GLOBAL HELPERS
+// HELPERS
 // ======================================================
+
 const otpCooldown = new Map();
+
 const verifyAttempts = new Map();
-const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+
+const emailRegex =
+/^[a-zA-Z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 
 // ======================================================
-// ADVANCED EMAIL VALIDATOR (The Tester Logic ✅)
+// BLOCKED TEMP EMAIL DOMAINS
 // ======================================================
+
+const blockedDomains = [
+
+  "tempmail.com",
+  "ditorek376@gcervera.com"
+  "10minutemail.com",
+  "guerrillamail.com",
+  "mailinator.com",
+  "yopmail.com",
+  "trashmail.com",
+  "fakeinbox.com",
+  "temp-mail.org",
+  "sharklasers.com",
+  "dispostable.com",
+  "maildrop.cc",
+  "tempmailo.com",
+  "moakt.com",
+  "getnada.com",
+  "emailondeck.com",
+  "throwawaymail.com",
+  "mailnesia.com",
+  "mintemail.com",
+  "spamgourmet.com",
+  "tempail.com",
+  "fake-mail.net"
+
+];
+
+// ======================================================
+// EMAIL VALIDATION
+// ======================================================
+
 async function validateRealEmail(email) {
+
   try {
-    const domain = email.split("@")[1]?.toLowerCase();
 
-    // 1. ✅ ALLOW: Specific Domains (Whitelisting)
-    const allowedDomains = ["healthians.com", "teleperformance.com", "gmail.com", "outlook.com", "yahoo.com", "icloud.com"];
-    if (allowedDomains.includes(domain)) return { valid: true };
+    const domain =
+      email.split("@")[1]?.toLowerCase();
 
-    // 2. ❌ BLOCK: Known Temp Mail Domains (Hard-coded list)
-    const blockedDomains = [
-      "tempmail.com", "yopmail.com", "10minutemail.com", "guerrillamail.com", 
-      "mailinator.com", "trashmail.com", "fakeinbox.com", "temp-mail.org","ditorek376@gcervera.com"
-    ];
+    // =========================================
+    // TEMP DOMAIN BLOCK
+    // =========================================
+
     if (blockedDomains.includes(domain)) {
-      return { valid: false, message: "Temporary/Fake emails are not allowed" };
+
+      return {
+        valid:false,
+        message:"Temporary email not allowed"
+      };
     }
 
-    // 3. 🔍 DEEP CHECK: Abstract API (Disposable & Deliverability)
-    if (ABSTRACT_API_KEY) {
-      const response = await axios.get(
-        `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${email}`
-      );
-      const data = response.data;
+    // =========================================
+    // ABSTRACT API VALIDATION
+    // =========================================
 
-      if (data.is_disposable_email?.value === true) {
-        return { valid: false, message: "Disposable email detected" };
-      }
-      if (data.deliverability === "UNDELIVERABLE") {
-        return { valid: false, message: "This email inbox does not exist" };
-      }
+    const response = await axios.get(
+      `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${email}`
+    );
+
+    const data = response.data;
+
+    console.log("EMAIL VALIDATION:", data);
+
+    // =========================================
+    // DISPOSABLE EMAIL
+    // =========================================
+
+    if (
+      data.is_disposable_email?.value === true
+    ) {
+
+      return {
+        valid:false,
+        message:"Temporary email not allowed"
+      };
     }
 
-    // 4. ✅ FAIL-SAFE: Allow if everything else passes
-    return { valid: true };
+    // =========================================
+    // INVALID FORMAT
+    // =========================================
+
+    if (
+      data.is_valid_format?.value === false
+    ) {
+
+      return {
+        valid:false,
+        message:"Invalid email format"
+      };
+    }
+
+    // =========================================
+    // INVALID DOMAIN
+    // =========================================
+
+    if (
+      data.is_mx_found?.value === false
+    ) {
+
+      return {
+        valid:false,
+        message:"Email domain invalid"
+      };
+    }
+
+    // =========================================
+    // BLOCK ONLY CLEARLY BAD EMAILS
+    // =========================================
+
+    if (
+      data.deliverability === "UNDELIVERABLE"
+    ) {
+
+      return {
+        valid:false,
+        message:"Email inbox does not exist"
+      };
+    }
+
+    // =========================================
+    // ALLOW REAL + COMPANY EMAILS
+    // =========================================
+
+    return {
+      valid:true
+    };
 
   } catch (err) {
-    console.log("Validation Error (Failing Open):", err.message);
-    return { valid: true }; // Real users block na ho agar API down ho
+
+    console.log(
+      "VALIDATION ERROR:",
+      err.message
+    );
+
+    // =========================================
+    // FAIL OPEN
+    // DON'T BLOCK REAL USERS
+    // =========================================
+
+    return {
+      valid:true
+    };
   }
 }
 
 // ======================================================
 // EMAIL TRANSPORT
 // ======================================================
+
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+
+  service:"gmail",
+
+  auth:{
+    user:EMAIL_USER,
+    pass:EMAIL_PASS
+  }
 });
 
 // ======================================================
-// ROUTES
+// HOME
 // ======================================================
 
-app.post("/send-otp", otpLimiter, async (req, res) => {
+app.get("/", (req,res)=>{
+
+  res.json({
+    success:true,
+    message:"API Running 🚀"
+  });
+
+});
+
+// ======================================================
+// HEALTH
+// ======================================================
+
+app.get("/health", (req,res)=>{
+
+  res.json({
+    success:true
+  });
+
+});
+
+// ======================================================
+// SEND OTP
+// ======================================================
+
+app.post("/send-otp", async (req,res)=>{
+
   try {
-    let { email } = req.body;
-    if (!email || !emailRegex.test(email)) {
-      return res.status(400).json({ success: false, message: "Invalid email format" });
+
+    const { email } = req.body;
+
+    // =========================================
+    // EMAIL CHECK
+    // =========================================
+
+    if (
+      !email ||
+      !emailRegex.test(email)
+    ) {
+
+      return res.status(400).json({
+        success:false,
+        message:"Invalid email"
+      });
     }
 
-    email = email.toLowerCase().trim();
+    // =========================================
+    // COOLDOWN
+    // =========================================
 
-    // COOLDOWN CHECK (1 minute)
-    const lastRequest = otpCooldown.get(email);
-    if (lastRequest && Date.now() - lastRequest < 60000) {
-      return res.status(429).json({ success: false, message: "Please wait 60 seconds" });
+    const lastRequest =
+      otpCooldown.get(email);
+
+    if (
+      lastRequest &&
+      Date.now() - lastRequest < 60000
+    ) {
+
+      return res.status(429).json({
+        success:false,
+        message:"Wait 60 sec before retry"
+      });
     }
 
-    // VALIDATION
-    const validation = await validateRealEmail(email);
+    otpCooldown.set(
+      email,
+      Date.now()
+    );
+
+    // =========================================
+    // VALIDATE EMAIL
+    // =========================================
+
+    const validation =
+      await validateRealEmail(email);
+
     if (!validation.valid) {
-      return res.status(400).json({ success: false, message: validation.message });
+
+      return res.status(400).json({
+        success:false,
+        message:validation.message
+      });
     }
 
+    // =========================================
     // GENERATE OTP
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const hashedOtp = await bcrypt.hash(otp, 10);
-    otpCooldown.set(email, Date.now());
+    // =========================================
 
-    // CREATE JWT (vToken)
-    const vToken = jwt.sign({ email, otp: hashedOtp }, JWT_SECRET, { expiresIn: "5m" });
+    const otp = String(
+      Math.floor(
+        100000 + Math.random() * 900000
+      )
+    );
 
-    // SEND MAIL
+    const hashedOtp =
+      await bcrypt.hash(otp,10);
+
+    // =========================================
+    // TOKEN
+    // =========================================
+
+    const vToken = jwt.sign(
+
+      {
+        email,
+        otp:hashedOtp
+      },
+
+      JWT_SECRET,
+
+      {
+        expiresIn:"5m"
+      }
+    );
+
+    // =========================================
+    // SEND EMAIL
+    // =========================================
+
     await transporter.sendMail({
-      from: `"Dawa Duniya" <${EMAIL_USER}>`,
-      to: email,
-      subject: "Dawa Duniya Login OTP",
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #00ffcc;">Dawa Duniya</h2>
-          <p>Your verification code is:</p>
-          <h1 style="letter-spacing: 5px; color: #3b82f6;">${otp}</h1>
-          <p>This OTP is valid for 5 minutes. Do not share it with anyone.</p>
-        </div>`
+
+      from:
+`"Dawa Duniya" <${EMAIL_USER}>`,
+
+      to:email,
+
+      subject:"Your OTP Verification",
+
+      html:`
+      <div style="
+        font-family:Poppins,sans-serif;
+        padding:20px;
+      ">
+
+        <h2>
+          Dawa Duniya OTP
+        </h2>
+
+        <h1 style="
+          letter-spacing:5px;
+          color:#00c896;
+        ">
+          ${otp}
+        </h1>
+
+        <p>
+          OTP valid for 5 minutes
+        </p>
+
+      </div>
+      `
     });
 
-    return res.json({ success: true, vToken });
+    return res.json({
+      success:true,
+      vToken
+    });
 
   } catch (err) {
-    console.error("SEND OTP ERROR:", err);
-    return res.status(500).json({ success: false, message: "Server error. Try again later." });
+
+    console.log(
+      "SEND OTP ERROR:",
+      err
+    );
+
+    return res.status(500).json({
+      success:false,
+      message:"Server error"
+    });
   }
 });
 
-app.post("/verify-otp", async (req, res) => {
+// ======================================================
+// VERIFY OTP
+// ======================================================
+
+app.post("/verify-otp", async (req,res)=>{
+
   try {
-    const { userOtp, vToken } = req.body;
-    if (!userOtp || !vToken) return res.status(400).json({ success: false, message: "Missing Data" });
 
-    // ATTEMPTS LIMIT
-    const attempts = verifyAttempts.get(vToken) || 0;
-    if (attempts >= 5) return res.status(429).json({ success: false, message: "Too many attempts. Send OTP again." });
+    const {
+      userOtp,
+      vToken
+    } = req.body;
 
-    // VERIFY TOKEN
+    if (
+      !userOtp ||
+      !vToken
+    ) {
+
+      return res.status(400).json({
+        success:false,
+        message:"Missing data"
+      });
+    }
+
+    // =========================================
+    // ATTEMPTS
+    // =========================================
+
+    const attempts =
+      verifyAttempts.get(vToken) || 0;
+
+    if (attempts >= 5) {
+
+      return res.status(429).json({
+        success:false,
+        message:"Too many attempts"
+      });
+    }
+
+    // =========================================
+    // VERIFY JWT
+    // =========================================
+
     let decoded;
+
     try {
-      decoded = jwt.verify(vToken, JWT_SECRET);
+
+      decoded = jwt.verify(
+        vToken,
+        JWT_SECRET
+      );
+
     } catch {
-      return res.status(400).json({ success: false, message: "OTP expired or invalid" });
+
+      return res.status(400).json({
+        success:false,
+        message:"OTP expired"
+      });
     }
 
-    // MATCH OTP
-    const match = await bcrypt.compare(String(userOtp), decoded.otp);
+    // =========================================
+    // VERIFY OTP
+    // =========================================
+
+    const match =
+      await bcrypt.compare(
+        String(userOtp),
+        decoded.otp
+      );
+
     if (!match) {
-      verifyAttempts.set(vToken, attempts + 1);
-      return res.status(400).json({ success: false, message: "Incorrect OTP" });
+
+      verifyAttempts.set(
+        vToken,
+        attempts + 1
+      );
+
+      return res.status(400).json({
+        success:false,
+        message:"Invalid OTP"
+      });
     }
 
-    // CREATE FINAL LOGIN TOKEN
-    const token = jwt.sign({ email: decoded.email }, JWT_SECRET, { expiresIn: "1h" });
+    // =========================================
+    // LOGIN TOKEN
+    // =========================================
 
-    res.cookie("dawaToken", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 3600000
+    const loginToken = jwt.sign(
+
+      {
+        email:decoded.email
+      },
+
+      JWT_SECRET,
+
+      {
+        expiresIn:"1h"
+      }
+    );
+
+    // =========================================
+    // COOKIE
+    // =========================================
+
+    res.cookie(
+      "dawaToken",
+      loginToken,
+      {
+        httpOnly:true,
+        secure:true,
+        sameSite:"none",
+        maxAge:3600000
+      }
+    );
+
+    return res.json({
+      success:true,
+      token:loginToken
     });
 
-    return res.json({ success: true, token });
-
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Verification failed" });
+
+    console.log(
+      "VERIFY OTP ERROR:",
+      err
+    );
+
+    return res.status(500).json({
+      success:false,
+      message:"Verification failed"
+    });
   }
 });
 
 // ======================================================
-// EXPORT FOR VERCEL / SERVER
+// SEND EMAIL LINK
 // ======================================================
+
+app.post("/send-link", async (req,res)=>{
+
+  try {
+
+    const { email } = req.body;
+
+    if (!email) {
+
+      return res.status(400).json({
+        success:false,
+        message:"Email required"
+      });
+    }
+
+    // =========================================
+    // VALIDATE EMAIL
+    // =========================================
+
+    const validation =
+      await validateRealEmail(email);
+
+    if (!validation.valid) {
+
+      return res.status(400).json({
+        success:false,
+        message:validation.message
+      });
+    }
+
+    // =========================================
+    // TOKEN
+    // =========================================
+
+    const token = jwt.sign(
+
+      { email },
+
+      JWT_SECRET,
+
+      {
+        expiresIn:"10m"
+      }
+    );
+
+    // =========================================
+    // LINK
+    // =========================================
+
+    const link =
+`${BASE_URL}/verify-email?token=${token}`;
+
+    // =========================================
+    // SEND EMAIL
+    // =========================================
+
+    await transporter.sendMail({
+
+      from:
+`"Dawa Duniya" <${EMAIL_USER}>`,
+
+      to:email,
+
+      subject:"Verify Your Email",
+
+      html:`
+      <div style="
+        font-family:Poppins,sans-serif;
+        padding:20px;
+      ">
+
+        <h2>
+          Email Verification
+        </h2>
+
+        <p>
+          Click below to verify email
+        </p>
+
+        <a
+          href="${link}"
+          style="
+            display:inline-block;
+            padding:12px 22px;
+            background:#00c896;
+            color:white;
+            text-decoration:none;
+            border-radius:10px;
+            margin-top:12px;
+          "
+        >
+          Verify Email
+        </a>
+
+      </div>
+      `
+    });
+
+    return res.json({
+      success:true
+    });
+
+  } catch (err) {
+
+    console.log(
+      "SEND LINK ERROR:",
+      err
+    );
+
+    return res.status(500).json({
+      success:false,
+      message:"Server error"
+    });
+  }
+});
+
+// ======================================================
+// VERIFY EMAIL LINK
+// ======================================================
+
+app.get("/verify-email", (req,res)=>{
+
+  try {
+
+    const { token } = req.query;
+
+    if (!token) {
+
+      return res.send(`
+        <h2>
+          Invalid verification link
+        </h2>
+      `);
+    }
+
+    // =========================================
+    // VERIFY JWT
+    // =========================================
+
+    const decoded = jwt.verify(
+      token,
+      JWT_SECRET
+    );
+
+    // =========================================
+    // LOGIN TOKEN
+    // =========================================
+
+    const loginToken = jwt.sign(
+
+      {
+        email:decoded.email
+      },
+
+      JWT_SECRET,
+
+      {
+        expiresIn:"1h"
+      }
+    );
+
+    // =========================================
+    // COOKIE
+    // =========================================
+
+    res.cookie(
+      "dawaToken",
+      loginToken,
+      {
+        httpOnly:true,
+        secure:true,
+        sameSite:"none",
+        maxAge:3600000
+      }
+    );
+
+    // =========================================
+    // REDIRECT
+    // =========================================
+
+    return res.redirect(
+      `${BASE_URL}/dashboard.html`
+    );
+
+  } catch (err) {
+
+    console.log(
+      "VERIFY LINK ERROR:",
+      err
+    );
+
+    return res.send(`
+      <h2>
+        Invalid or expired link
+      </h2>
+    `);
+  }
+});
+
+// ======================================================
+// EXPORT
+// ======================================================
+
 module.exports = app;
-const PORT = process.env.PORT || 3000;
-if (require.main === module) {
-  app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-}
