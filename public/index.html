@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Dawa Duniya | Login</title>
+<title>Dawa Duniya | OTP Login</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 
@@ -12,7 +12,7 @@
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:'Poppins', sans-serif;
+    font-family:Poppins,sans-serif;
 }
 
 body{
@@ -20,206 +20,165 @@ body{
     display:flex;
     justify-content:center;
     align-items:center;
-    background: linear-gradient(135deg,#0f172a,#1e293b,#0f172a);
     overflow:hidden;
+    background:#0f172a;
 }
 
-/* ANIMATED BACKGROUND GLOW */
-body::before,
-body::after{
-    content:"";
+/* ===== Animated Background ===== */
+.bg{
     position:absolute;
-    width:500px;
-    height:500px;
-    filter:blur(120px);
-    opacity:0.35;
-    animation: floatGlow 8s ease-in-out infinite;
+    width:200%;
+    height:200%;
+    background: radial-gradient(circle at 20% 20%, #00ffcc33, transparent 30%),
+                radial-gradient(circle at 80% 30%, #3b82f633, transparent 30%),
+                radial-gradient(circle at 50% 80%, #a855f733, transparent 30%);
+    animation: move 10s linear infinite;
 }
 
-body::before{
-    background:#00ffcc;
-    top:-150px;
-    left:-150px;
+@keyframes move{
+    0%{transform:translate(0,0);}
+    50%{transform:translate(-50px,-50px);}
+    100%{transform:translate(0,0);}
 }
 
-body::after{
-    background:#3b82f6;
-    bottom:-150px;
-    right:-150px;
-    animation-delay:3s;
-}
-
-@keyframes floatGlow{
-    0%,100%{ transform: translateY(0px) scale(1); }
-    50%{ transform: translateY(30px) scale(1.1); }
-}
-
-/* CARD */
-.wrapper{
-    width:100%;
-    max-width:430px; /* ⬅️ BIGGER FORM */
-    padding:40px 35px;
+/* ===== Card ===== */
+.card{
+    position:relative;
+    width:420px;
+    padding:40px;
     border-radius:22px;
-    background: rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.08);
     backdrop-filter: blur(18px);
-    border:1px solid rgba(255,255,255,0.12);
-    box-shadow:0 25px 60px rgba(0,0,0,0.5);
-
+    border:1px solid rgba(255,255,255,0.15);
+    box-shadow:0 20px 50px rgba(0,0,0,0.4);
     text-align:center;
-
-    /* ENTRY ANIMATION */
-    animation: slideIn 0.8s ease;
+    color:white;
+    animation: fadeIn 0.6s ease;
 }
 
-@keyframes slideIn{
-    from{
-        opacity:0;
-        transform: translateY(30px) scale(0.95);
-    }
-    to{
-        opacity:1;
-        transform: translateY(0) scale(1);
-    }
+@keyframes fadeIn{
+    from{opacity:0; transform:translateY(20px);}
+    to{opacity:1; transform:translateY(0);}
 }
 
-/* LOGO */
-.logo{
-    font-size:30px;
-    font-weight:600;
-    color:#00ffcc;
-    letter-spacing:0.5px;
+h2{
+    font-size:28px;
+    margin-bottom:5px;
 }
 
-.tagline{
+.sub{
     font-size:13px;
-    color:#cbd5e1;
-    margin-bottom:30px;
+    opacity:0.7;
+    margin-bottom:25px;
 }
 
-/* INPUT */
+/* Inputs */
 input{
     width:100%;
-    padding:15px;
-    margin:12px 0;
-    border-radius:14px;
+    padding:14px;
+    margin:10px 0;
+    border-radius:12px;
     border:1px solid rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.05);
+    background:rgba(255,255,255,0.06);
     color:white;
     outline:none;
-    transition:0.25s;
+    transition:0.3s;
 }
 
-/* INPUT ANIMATION */
 input:focus{
     border-color:#00ffcc;
-    box-shadow:0 0 18px rgba(0,255,204,0.25);
-    transform: scale(1.02);
+    transform:scale(1.02);
 }
 
-/* BUTTON */
+/* Buttons */
 button{
     width:100%;
-    padding:15px;
-    margin-top:12px;
+    padding:14px;
     border:none;
-    border-radius:14px;
-    font-weight:600;
+    border-radius:12px;
+    margin-top:10px;
     cursor:pointer;
+    font-weight:600;
     transition:0.3s;
-    position:relative;
-    overflow:hidden;
-}
-
-/* BUTTON HOVER GLOW */
-button::after{
-    content:"";
-    position:absolute;
-    top:0;
-    left:-100%;
-    width:100%;
-    height:100%;
-    background: rgba(255,255,255,0.2);
-    transform: skewX(-20deg);
-    transition:0.5s;
-}
-
-button:hover::after{
-    left:120%;
-}
-
-button:hover{
-    transform:translateY(-2px);
 }
 
 .primary{
-    background: linear-gradient(135deg,#00ffcc,#00a884);
+    background:linear-gradient(135deg,#00ffcc,#00b3a4);
     color:#000;
 }
 
+.primary:hover{transform:translateY(-2px);}
 .secondary{
-    background: linear-gradient(135deg,#3b82f6,#2563eb);
-    color:#fff;
+    background:linear-gradient(135deg,#3b82f6,#1d4ed8);
+    color:white;
 }
 
-/* MESSAGE */
+/* OTP box */
+.hidden{display:none;}
+
 #msg{
-    margin-top:18px;
+    margin-top:15px;
     font-size:13px;
-    color:#e2e8f0;
+    opacity:0.9;
+}
+
+/* toast style */
+.toast{
+    margin-top:10px;
+    font-size:13px;
+    color:#00ffcc;
     min-height:20px;
 }
-
-/* HIDDEN */
-.hidden{display:none;}
 </style>
 </head>
 
 <body>
 
-<div class="wrapper">
+<div class="bg"></div>
 
-    <div class="logo">Dawa Duniya</div>
-    <div class="tagline">Aapki sehat ka sathi ❤️</div>
+<div class="card">
+    <h2>Dawa Duniya</h2>
+    <div class="sub">Aapki sehat ka sathi ❤️</div>
 
     <!-- EMAIL -->
     <div id="emailSection">
-        <input type="email" id="email" placeholder="Enter your email"/>
-        <button class="primary" id="sendBtn">Send OTP</button>
+        <input type="email" id="email" placeholder="Enter Email Address"/>
+        <button class="primary" onclick="sendOTP()">Send OTP</button>
     </div>
 
     <!-- OTP -->
     <div id="otpSection" class="hidden">
-        <input type="text" id="otp" placeholder="Enter OTP"/>
-        <button class="secondary" id="verifyBtn">Verify & Login</button>
+        <input type="text" id="otp" placeholder="Enter 6 digit OTP"/>
+        <button class="secondary" onclick="verifyOTP()">Verify OTP</button>
     </div>
 
-    <div id="msg"></div>
-
+    <div id="msg" class="toast"></div>
 </div>
 
 <script>
-const API_URL =
+const API =
   window.location.hostname === "localhost"
     ? "http://localhost:3000"
     : "https://dawa-duniya-otp.vercel.app";
 
 let tempVToken = "";
 
-// SEND OTP
-async function handleSendOTP(){
+// message handler
+function show(msg){
+    document.getElementById("msg").innerText = msg;
+}
+
+async function sendOTP(){
     const email = document.getElementById("email").value.trim();
-    const msg = document.getElementById("msg");
 
     if(!email){
-        msg.innerText="Enter email";
-        msg.style.color="#ff6b6b";
+        show("Please enter email");
         return;
     }
 
-    msg.innerText="Sending OTP...";
-    msg.style.color="#00ffcc";
+    show("Sending OTP...");
 
-    const res = await fetch(`${API_URL}/send-otp`,{
+    const res = await fetch(`${API}/send-otp`, {
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({email})
@@ -229,25 +188,31 @@ async function handleSendOTP(){
 
     if(data.success){
         tempVToken = data.vToken;
+
+        show("OTP sent successfully to your email ✉️");
+
+        setTimeout(()=>{
+            show("We have sent OTP to your entered email ID");
+        },1500);
+
         document.getElementById("emailSection").classList.add("hidden");
         document.getElementById("otpSection").classList.remove("hidden");
-        msg.innerText="OTP sent successfully";
-        msg.style.color="#00ffcc";
-    }else{
-        msg.innerText=data.message;
-        msg.style.color="#ff6b6b";
+    } else {
+        show(data.message || "Failed to send OTP");
     }
 }
 
-// VERIFY OTP
-async function handleVerifyOTP(){
+async function verifyOTP(){
     const otp = document.getElementById("otp").value.trim();
-    const msg = document.getElementById("msg");
 
-    msg.innerText="Verifying...";
-    msg.style.color="#60a5fa";
+    if(otp.length !== 6){
+        show("Enter valid 6-digit OTP");
+        return;
+    }
 
-    const res = await fetch(`${API_URL}/verify-otp`,{
+    show("Verifying...");
+
+    const res = await fetch(`${API}/verify-otp`, {
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
@@ -259,21 +224,16 @@ async function handleVerifyOTP(){
     const data = await res.json();
 
     if(data.success){
-        localStorage.setItem("dawaToken",data.token);
-        msg.innerText="Login Successful";
+        localStorage.setItem("dawaToken", data.token);
+        show("Login successful 🚀");
 
         setTimeout(()=>{
-            window.location.href="dashboard.html";
-        },800);
-
-    }else{
-        msg.innerText=data.message;
-        msg.style.color="#ff6b6b";
+            window.location.href = "dashboard.html";
+        },1000);
+    } else {
+        show("Invalid OTP");
     }
 }
-
-document.getElementById("sendBtn").addEventListener("click",handleSendOTP);
-document.getElementById("verifyBtn").addEventListener("click",handleVerifyOTP);
 </script>
 
 </body>
