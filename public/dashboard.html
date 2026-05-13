@@ -77,48 +77,58 @@ cursor:pointer;
 
 <script>
 
-const token=
-localStorage.getItem("dawaToken");
+(() => {
 
-if(!token){
-window.location.href="/";
-}
+  try {
 
-</script>
+    const token =
+      localStorage.getItem("dawaToken");
 
-</head>
+    // TOKEN NOT FOUND
+    if (!token) {
 
-<body>
+      window.location.replace("/");
 
-<div class="card">
+      return;
+    }
 
-<div class="logo">
-💊
-</div>
+    // JWT FORMAT BASIC CHECK
+    const parts = token.split(".");
 
-<h1>Dawa Duniya</h1>
+    if (parts.length !== 3) {
 
-<p>
-Authentication successful 🚀
-<br>
-Welcome to dashboard
-</p>
+      localStorage.removeItem("dawaToken");
 
-<button onclick="logout()">
-Sign Out
-</button>
+      window.location.replace("/");
 
-</div>
+      return;
+    }
 
-<script>
+    // JWT PAYLOAD CHECK
+    const payload = JSON.parse(
+      atob(parts[1])
+    );
 
-function logout(){
+    // EXPIRED TOKEN
+    if (payload.exp * 1000 < Date.now()) {
 
-localStorage.removeItem("dawaToken");
+      localStorage.removeItem("dawaToken");
 
-window.location.href="/";
+      window.location.replace("/");
 
-}
+      return;
+    }
+
+  } catch (err) {
+
+    console.log("AUTH ERROR:", err);
+
+    localStorage.removeItem("dawaToken");
+
+    window.location.replace("/");
+  }
+
+})();
 
 </script>
 

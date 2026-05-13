@@ -14,16 +14,13 @@ require("dotenv").config();
 
 const app = express();
 
-// ======================================================
-// ENV
-// ======================================================
-
-const { JWT_SECRET, EMAIL_USER, EMAIL_PASS } = process.env;
-
-if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
-  console.log("❌ Missing ENV variables");
-  process.exit(1);
-}
+const {
+  JWT_SECRET,
+  EMAIL_USER,
+  EMAIL_PASS,
+  ABSTRACT_API_KEY,
+  BASE_URL
+} = process.env;
 
 // ======================================================
 // SECURITY
@@ -35,26 +32,17 @@ app.use(
   })
 );
 
-// ======================================================
-// CORS
-// ======================================================
-
 app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://dawa-duniya-otp.vercel.app",
+      "https://dawa-duniya-otp.vercel.app"
     ],
-    methods: ["GET", "POST"],
-    credentials: true,
+    credentials: true
   })
 );
 
-// ======================================================
-// MIDDLEWARE
-// ======================================================
-
-app.use(express.json({ limit: "10kb" }));
+app.use(express.json());
 app.use(cookieParser());
 app.use(morgan("dev"));
 
@@ -69,199 +57,190 @@ const otpLimiter = rateLimit({
   max: 10,
   message: {
     success: false,
-    message: "Too many requests. Try again later.",
-  },
+    message: "Too many requests"
+  }
 });
 
 app.use("/send-otp", otpLimiter);
 app.use("/send-link", otpLimiter);
 
 // ======================================================
-// VALIDATION
+// HELPERS
 // ======================================================
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const otpCooldown = new Map();
+const verifyAttempts = new Map();
 
-// ======================================================
-// TRUST SYSTEM
-// ======================================================
+const emailRegex =
+/^[a-zA-Z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 
-const otpAttemptsByEmail = new Map();
-const otpAttemptsByIP = new Map();
-const trustScore = new Map();
+async function validateRealEmail(email) {
+
+  try {
+
+    const response = await axios.get(
+      `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${email}`
+    );
+
+    const data = response.data;
+
+    // TEMP EMAIL BLOCK
+    if (data.is_disposable_email.value) {
+      return {
+        valid:false,
+        message:"Temporary email not allowed"
+      };
+    }
+
+    // INVALID FORMAT
+    if (!data.is_valid_format.value) {
+      return {
+        valid:false,
+        message:"Invalid email format"
+      };
+    }
+
+    // SMTP CHECK
+    if (!data.deliverability ||
+        data.deliverability !== "DELIVERABLE") {
+
+      return {
+        valid:false,
+        message:"Email does not exist"
+      };
+    }
+
+    return {
+      valid:true
+    };
+
+  } catch (err) {
+
+    return {
+      valid:false,
+      message:"Email validation failed"
+    };
+  }
+}
 
 // ======================================================
 // EMAIL TRANSPORT
 // ======================================================
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS,
-  },
-});
-
-// ======================================================
-// HELPERS
-// ======================================================
-
-function getClientIP(req) {
-  return (
-    req.headers["x-forwarded-for"]?.split(",")[0] ||
-    req.socket.remoteAddress
-  );
-}
-
-async function isDisposableEmail(email) {
-  try {
-    const res = await axios.get(
-      `https://open.kickbox.com/v1/disposable/${email}`
-    );
-
-    return res.data.disposable;
-  } catch {
-    return false;
+  service:"gmail",
+  auth:{
+    user:EMAIL_USER,
+    pass:EMAIL_PASS
   }
-}
-
-function updateTrust(email, domain, disposable) {
-  let score = trustScore.get(email) || 0;
-
-  const trusted = [
-    "gmail.com",
-    "outlook.com",
-    "icloud.com",
-    "hotmail.com",
-    "yahoo.com",
-  ];
-
-  if (trusted.includes(domain)) score += 2;
-
-  if (disposable) score -= 3;
-
-  trustScore.set(email, score);
-
-  return score;
-}
-
-// ======================================================
-// HEALTH
-// ======================================================
-
-app.get("/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "API running 🚀",
-  });
 });
 
 // ======================================================
 // HOME
 // ======================================================
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+app.get("/", (req,res)=>{
+  res.json({
+    success:true,
+    message:"API Running 🚀"
+  });
 });
 
 // ======================================================
 // SEND OTP
 // ======================================================
 
-app.post("/send-otp", async (req, res) => {
-  try {
+app.post("/send-otp", async (req,res)=>{
+
+  try{
+
     const { email } = req.body;
 
-    const ip = getClientIP(req);
-
-    if (!email || !emailRegex.test(email)) {
+    if(!email || !emailRegex.test(email)){
       return res.status(400).json({
-        success: false,
-        message: "Invalid email",
+        success:false,
+        message:"Invalid email"
       });
     }
 
-    const domain = email.split("@")[1].toLowerCase();
+    // COOLDOWN
+    const lastRequest = otpCooldown.get(email);
 
-    // RATE LIMIT LOGIC
+    if(lastRequest &&
+      Date.now() - lastRequest < 60000){
 
-    const emailCount = otpAttemptsByEmail.get(email) || 0;
-    const ipCount = otpAttemptsByIP.get(ip) || 0;
-
-    if (emailCount >= 3) {
       return res.status(429).json({
-        success: false,
-        message: "Too many OTP requests",
+        success:false,
+        message:"Wait 60 sec before retry"
       });
     }
 
-    if (ipCount >= 10) {
-      return res.status(429).json({
-        success: false,
-        message: "Too many requests from IP",
-      });
-    }
+    otpCooldown.set(email, Date.now());
 
-    otpAttemptsByEmail.set(email, emailCount + 1);
-    otpAttemptsByIP.set(ip, ipCount + 1);
+    // REAL EMAIL VALIDATION
+    const validation =
+      await validateRealEmail(email);
 
-    // DISPOSABLE CHECK
+    if(!validation.valid){
 
-    const disposable = await isDisposableEmail(email);
-
-    const score = updateTrust(email, domain, disposable);
-
-    if (disposable && score < 0) {
       return res.status(400).json({
-        success: false,
-        message: "Temporary email not allowed",
+        success:false,
+        message:validation.message
       });
     }
 
     // OTP
+    const otp =
+      String(
+        Math.floor(100000 + Math.random()*900000)
+      );
 
-    const otp = String(
-      Math.floor(100000 + Math.random() * 900000)
-    );
-
-    console.log("OTP:", otp);
-
-    const hashedOtp = await bcrypt.hash(otp, 10);
+    const hashedOtp =
+      await bcrypt.hash(otp,10);
 
     const vToken = jwt.sign(
       {
         email,
-        otp: hashedOtp,
+        otp:hashedOtp
       },
       JWT_SECRET,
       {
-        expiresIn: "5m",
+        expiresIn:"5m"
       }
     );
 
+    // SEND EMAIL
     await transporter.sendMail({
-      from: `"Dawa Duniya" <${EMAIL_USER}>`,
-      to: email,
-      subject: "OTP Verification",
-      html: `
-        <div style="font-family:sans-serif;padding:20px;">
-          <h2>Dawa Duniya OTP</h2>
-          <h1>${otp}</h1>
-          <p>Valid for 5 minutes.</p>
-        </div>
-      `,
+      from:`"Dawa Duniya" <${EMAIL_USER}>`,
+      to:email,
+      subject:"Your OTP Verification",
+      html:`
+      <div style="font-family:Poppins,sans-serif;padding:20px;">
+        <h2>Dawa Duniya OTP</h2>
+
+        <h1 style="letter-spacing:4px;">
+          ${otp}
+        </h1>
+
+        <p>
+          OTP valid for 5 minutes
+        </p>
+      </div>
+      `
     });
 
     return res.json({
-      success: true,
-      vToken,
+      success:true,
+      vToken
     });
-  } catch (err) {
+
+  }catch(err){
+
     console.log(err);
 
     return res.status(500).json({
-      success: false,
-      message: "Server error",
+      success:false,
+      message:"Server error"
     });
   }
 });
@@ -270,60 +249,92 @@ app.post("/send-otp", async (req, res) => {
 // VERIFY OTP
 // ======================================================
 
-app.post("/verify-otp", async (req, res) => {
-  try {
+app.post("/verify-otp", async (req,res)=>{
+
+  try{
+
     const { userOtp, vToken } = req.body;
 
-    if (!userOtp || !vToken) {
+    if(!userOtp || !vToken){
+
       return res.status(400).json({
-        success: false,
-        message: "OTP or token missing",
+        success:false,
+        message:"Missing data"
+      });
+    }
+
+    // ATTEMPTS
+    const attempts =
+      verifyAttempts.get(vToken) || 0;
+
+    if(attempts >= 5){
+
+      return res.status(429).json({
+        success:false,
+        message:"Too many attempts"
       });
     }
 
     let decoded;
 
-    try {
+    try{
+
       decoded = jwt.verify(vToken, JWT_SECRET);
-    } catch (err) {
+
+    }catch{
+
       return res.status(400).json({
-        success: false,
-        message: "OTP expired or invalid",
+        success:false,
+        message:"OTP expired"
       });
     }
 
-    const isMatch = await bcrypt.compare(
-      String(userOtp),
-      decoded.otp
-    );
+    const match =
+      await bcrypt.compare(
+        String(userOtp),
+        decoded.otp
+      );
 
-    if (!isMatch) {
+    if(!match){
+
+      verifyAttempts.set(
+        vToken,
+        attempts + 1
+      );
+
       return res.status(400).json({
-        success: false,
-        message: "Invalid OTP",
+        success:false,
+        message:"Invalid OTP"
       });
     }
 
-    const token = jwt.sign(
+    const loginToken = jwt.sign(
       {
-        email: decoded.email,
+        email:decoded.email
       },
       JWT_SECRET,
       {
-        expiresIn: "1h",
+        expiresIn:"1h"
       }
     );
 
-    return res.json({
-      success: true,
-      token,
+    res.cookie("dawaToken", loginToken, {
+      httpOnly:true,
+      secure:true,
+      sameSite:"none",
+      maxAge:3600000
     });
-  } catch (err) {
-    console.log(err);
+
+    return res.json({
+      success:true,
+      token:loginToken
+    });
+
+  }catch(err){
 
     return res.status(500).json({
-      success: false,
-      message: "Verification failed",
+      success:false,
+      message:"Verification failed"
     });
   }
 });
@@ -332,14 +343,20 @@ app.post("/verify-otp", async (req, res) => {
 // SEND EMAIL LINK
 // ======================================================
 
-app.post("/send-link", async (req, res) => {
-  try {
+app.post("/send-link", async (req,res)=>{
+
+  try{
+
     const { email } = req.body;
 
-    if (!emailRegex.test(email)) {
+    const validation =
+      await validateRealEmail(email);
+
+    if(!validation.valid){
+
       return res.status(400).json({
-        success: false,
-        message: "Invalid email",
+        success:false,
+        message:validation.message
       });
     }
 
@@ -347,103 +364,80 @@ app.post("/send-link", async (req, res) => {
       { email },
       JWT_SECRET,
       {
-        expiresIn: "10m",
+        expiresIn:"10m"
       }
     );
 
-    const BASE_URL =
-      process.env.BASE_URL ||
-      "https://dawa-duniya-otp.vercel.app";
-
-    const link = `${BASE_URL}/verify-email?token=${token}`;
+    const link =
+`${BASE_URL}/verify-email?token=${token}`;
 
     await transporter.sendMail({
-      from: `"Dawa Duniya" <${EMAIL_USER}>`,
-      to: email,
-      subject: "Verify Email",
-      html: `
-        <div style="font-family:sans-serif;padding:20px;">
-          <h2>Email Verification</h2>
-          <a href="${link}">
-            Verify Email
-          </a>
-        </div>
-      `,
+
+      from:`"Dawa Duniya" <${EMAIL_USER}>`,
+      to:email,
+      subject:"Verify Your Email",
+
+      html:`
+      <h2>Email Verification</h2>
+
+      <a href="${link}">
+        Verify Email
+      </a>
+      `
     });
 
     return res.json({
-      success: true,
+      success:true
     });
-  } catch (err) {
-    console.log(err);
+
+  }catch(err){
 
     return res.status(500).json({
-      success: false,
-      message: "Failed to send link",
+      success:false
     });
   }
 });
 
 // ======================================================
-// VERIFY EMAIL
+// VERIFY EMAIL LINK
 // ======================================================
 
-app.get("/verify-email", (req, res) => {
-  try {
+app.get("/verify-email", (req,res)=>{
+
+  try{
+
     const { token } = req.query;
 
-    if (!token) {
-      return res.status(400).send("Invalid link");
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded =
+      jwt.verify(token, JWT_SECRET);
 
     const loginToken = jwt.sign(
       {
-        email: decoded.email,
+        email:decoded.email
       },
       JWT_SECRET,
       {
-        expiresIn: "1h",
+        expiresIn:"1h"
       }
     );
 
+    res.cookie("dawaToken", loginToken, {
+      httpOnly:true,
+      secure:true,
+      sameSite:"none",
+      maxAge:3600000
+    });
+
+    return res.redirect(
+      `${BASE_URL}/dashboard.html`
+    );
+
+  }catch{
+
     return res.send(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Verifying...</title>
-      </head>
-
-      <body style="background:#0f172a;color:white;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;">
-      
-        <h2>Email Verified 🚀</h2>
-
-        <script>
-          localStorage.setItem("dawaToken","${loginToken}");
-          window.location.href="/dashboard.html";
-        </script>
-
-      </body>
-      </html>
-    `);
-  } catch (err) {
-    console.log(err);
-
-    return res.status(400).send(`
       <h2>Invalid or expired link</h2>
     `);
   }
-});
-
-// ======================================================
-// SERVER
-// ======================================================
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
 });
 
 module.exports = app;
