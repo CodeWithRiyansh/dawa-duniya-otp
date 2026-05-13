@@ -1,6 +1,5 @@
 const express = require("express");
 const nodemailer = require("nodemailer");
-const path = require("path");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 const helmet = require("helmet");
@@ -26,7 +25,7 @@ if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
 }
 
 // ======================================================
-// SECURITY (Helmet FIXED)
+// SECURITY (Balanced CSP for modern UI)
 // ======================================================
 app.use(
   helmet({
@@ -35,8 +34,8 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        imgSrc: ["'self'", "data:"],
-        connectSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https://*"],
+        connectSrc: ["'self'", "https://open.kickbox.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
       },
@@ -51,7 +50,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://dawa-duniya-otp.vercel.app"
+      "http://localhost:5500",
+      "https://dawa-duniya-otp.vercel.app",
     ],
     methods: ["GET", "POST"],
     credentials: true,
@@ -64,21 +64,31 @@ app.use(
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 app.use(morgan("dev"));
-app.use(express.static(path.join(__dirname, "public")));
 
 // ======================================================
-// RATE LIMIT (OTP SAFE)
+// RATE LIMIT
 // ======================================================
 const otpLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 10,
   message: {
     success: false,
-    message: "Too many OTP requests. Try after 5 minutes.",
+    message: "Too many OTP requests. Try again later.",
   },
 });
 
 app.use("/send-otp", otpLimiter);
+
+// ======================================================
+// EMAIL SETUP
+// ======================================================
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
+  },
+});
 
 // ======================================================
 // VALIDATION
@@ -91,39 +101,14 @@ const allowedDomains = [
   "outlook.com",
   "hotmail.com",
   "icloud.com",
-  "rediffmail.com",
   "protonmail.com",
 ];
-
-// ======================================================
-// EMAIL TRANSPORT
-// ======================================================
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS,
-  },
-});
 
 // ======================================================
 // HEALTH CHECK
 // ======================================================
 app.get("/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "OTP API Running 🚀",
-  });
-});
-
-// ======================================================
-// HOME
-// ======================================================
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "Dawa Duniya OTP API is running",
-  });
+  res.json({ success: true, message: "OTP API Running 🚀" });
 });
 
 // ======================================================
@@ -149,7 +134,7 @@ app.post("/send-otp", async (req, res) => {
       });
     }
 
-    // Kickbox disposable check (FIXED)
+    // FIXED KICKBOX (correct usage)
     try {
       const response = await axios.get(
         `https://open.kickbox.com/v1/disposable/${email}`
@@ -162,10 +147,10 @@ app.post("/send-otp", async (req, res) => {
         });
       }
     } catch (err) {
-      console.log("Kickbox skipped");
+      console.log("Kickbox check skipped");
     }
 
-    // OTP generate
+    // OTP GENERATION
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const hashedOtp = await bcrypt.hash(otp, 10);
 
@@ -175,7 +160,7 @@ app.post("/send-otp", async (req, res) => {
       { expiresIn: "5m" }
     );
 
-    // send email
+    // EMAIL SEND
     await transporter.sendMail({
       from: `"Dawa Duniya" <${EMAIL_USER}>`,
       to: email,
@@ -259,6 +244,6 @@ app.post("/verify-otp", async (req, res) => {
 });
 
 // ======================================================
-// EXPORT (VERCEL)
+// EXPORT FOR VERCEL
 // ======================================================
 module.exports = app;
