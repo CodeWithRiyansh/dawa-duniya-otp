@@ -14,6 +14,10 @@ require("dotenv").config();
 
 const app = express();
 
+// ======================================================
+// ENV
+// ======================================================
+
 const {
   JWT_SECRET,
   EMAIL_USER,
@@ -21,6 +25,20 @@ const {
   ABSTRACT_API_KEY,
   BASE_URL
 } = process.env;
+
+// ======================================================
+// BASIC ENV CHECK
+// ======================================================
+
+if (
+  !JWT_SECRET ||
+  !EMAIL_USER ||
+  !EMAIL_PASS ||
+  !BASE_URL
+) {
+  console.log("❌ Missing ENV variables");
+  process.exit(1);
+}
 
 // ======================================================
 // SECURITY
@@ -32,6 +50,10 @@ app.use(
   })
 );
 
+// ======================================================
+// CORS
+// ======================================================
+
 app.use(
   cors({
     origin: true,
@@ -39,22 +61,33 @@ app.use(
   })
 );
 
-app.use(express.json());
+// ======================================================
+// MIDDLEWARE
+// ======================================================
+
+app.use(express.json({ limit:"10kb" }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(
+  express.static(
+    path.join(__dirname, "public")
+  )
+);
 
 // ======================================================
 // RATE LIMIT
 // ======================================================
 
 const otpLimiter = rateLimit({
+
   windowMs: 5 * 60 * 1000,
+
   max: 10,
+
   message: {
-    success: false,
-    message: "Too many requests"
+    success:false,
+    message:"Too many requests"
   }
 });
 
@@ -71,7 +104,12 @@ const verifyAttempts = new Map();
 const emailRegex =
 /^[a-zA-Z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 
+// ======================================================
+// BLOCKED TEMP EMAIL DOMAINS
+// ======================================================
+
 const blockedDomains = [
+
   "tempmail.com",
   "10minutemail.com",
   "guerrillamail.com",
@@ -82,8 +120,18 @@ const blockedDomains = [
   "temp-mail.org",
   "sharklasers.com",
   "dispostable.com",
-  "maildrop.cc"
+  "maildrop.cc",
+  "tempmailo.com",
+  "moakt.com",
+  "getnada.com",
+  "emailondeck.com",
+  "throwawaymail.com"
+
 ];
+
+// ======================================================
+// EMAIL VALIDATION
+// ======================================================
 
 async function validateRealEmail(email) {
 
@@ -92,7 +140,10 @@ async function validateRealEmail(email) {
     const domain =
       email.split("@")[1]?.toLowerCase();
 
-    // BLOCK TEMP DOMAINS
+    // =========================================
+    // TEMP DOMAIN BLOCK
+    // =========================================
+
     if (blockedDomains.includes(domain)) {
 
       return {
@@ -101,98 +152,88 @@ async function validateRealEmail(email) {
       };
     }
 
-    const response = await axios.get(
-      `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${email}`
+    // =========================================
+    // ABSTRACT API VALIDATION
+    // =========================================
+
+    if (ABSTRACT_API_KEY) {
+
+      const response = await axios.get(
+        `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${email}`
+      );
+
+      const data = response.data;
+
+      console.log(
+        "EMAIL VALIDATION:",
+        data
+      );
+
+      // =========================================
+      // TEMP EMAIL CHECK
+      // =========================================
+
+      if (
+        data.is_disposable_email &&
+        data.is_disposable_email.value === true
+      ) {
+
+        return {
+          valid:false,
+          message:"Temporary email not allowed"
+        };
+      }
+
+      // =========================================
+      // FORMAT CHECK
+      // =========================================
+
+      if (
+        data.is_valid_format &&
+        data.is_valid_format.value === false
+      ) {
+
+        return {
+          valid:false,
+          message:"Invalid email format"
+        };
+      }
+
+      // =========================================
+      // MX CHECK
+      // =========================================
+
+      if (
+        data.is_mx_found &&
+        data.is_mx_found.value === false
+      ) {
+
+        return {
+          valid:false,
+          message:"Email domain invalid"
+        };
+      }
+
+      // IMPORTANT:
+      // SMTP VALIDATION REMOVE KAR DIYA
+      // KYUKI COMPANY EMAILS FAIL KAR DETI HAI
+    }
+
+    return {
+      valid:true
+    };
+
+  } catch (err) {
+
+    console.log(
+      "VALIDATION ERROR:",
+      err.message
     );
 
-    const data = response.data;
-
-    // TEMP EMAIL BLOCK
-    if (
-      data.is_disposable_email &&
-      data.is_disposable_email.value === true
-    ) {
-
-      return {
-        valid:false,
-        message:"Temporary email not allowed"
-      };
-    }
-
-    // FORMAT CHECK
-    if (
-      data.is_valid_format &&
-      data.is_valid_format.value === false
-    ) {
-
-      return {
-        valid:false,
-        message:"Invalid email format"
-      };
-    }
-
-    // MX CHECK
-    if (
-      data.is_mx_found &&
-      data.is_mx_found.value === false
-    ) {
-
-      return {
-        valid:false,
-        message:"Domain cannot receive emails"
-      };
-    }
-
-    // SMTP CHECK
-    if (
-      data.is_smtp_valid &&
-      data.is_smtp_valid.value === false
-    ) {
-
-      return {
-        valid:false,
-        message:"Email inbox does not exist"
-      };
-    }
-
+    // FAIL OPEN
+    // REAL USERS BLOCK NA HO
     return {
       valid:true
-    };
-
-  } catch (err) {
-
-    console.log("VALIDATION ERROR:", err.message);
-
-    return {
-      valid:true
-    };
-  }
-}
-    // DELIVERABILITY
-    // ONLY BLOCK CLEARLY FAKE EMAILS
-
-if (
-  data.is_smtp_valid &&
-  data.is_smtp_valid.value === false
-) {
-
-  return {
-    valid:false,
-    message:"Email inbox does not exist"
-  };
-}
-
-    return {
-      valid:true
-    };
-
-  } catch (err) {
-
-    console.log("VALIDATION ERROR:", err.message);
-
-    return {
-      valid:false,
-      message:"Email validation failed"
     };
   }
 }
@@ -202,7 +243,9 @@ if (
 // ======================================================
 
 const transporter = nodemailer.createTransport({
+
   service:"gmail",
+
   auth:{
     user:EMAIL_USER,
     pass:EMAIL_PASS
@@ -214,10 +257,12 @@ const transporter = nodemailer.createTransport({
 // ======================================================
 
 app.get("/", (req,res)=>{
+
   res.json({
     success:true,
     message:"API Running 🚀"
   });
+
 });
 
 // ======================================================
@@ -225,9 +270,11 @@ app.get("/", (req,res)=>{
 // ======================================================
 
 app.get("/health", (req,res)=>{
+
   res.json({
     success:true
   });
+
 });
 
 // ======================================================
@@ -240,7 +287,14 @@ app.post("/send-otp", async (req,res)=>{
 
     const { email } = req.body;
 
-    if(!email || !emailRegex.test(email)){
+    // =========================================
+    // EMAIL CHECK
+    // =========================================
+
+    if(
+      !email ||
+      !emailRegex.test(email)
+    ){
 
       return res.status(400).json({
         success:false,
@@ -248,7 +302,10 @@ app.post("/send-otp", async (req,res)=>{
       });
     }
 
+    // =========================================
     // COOLDOWN
+    // =========================================
+
     const lastRequest =
       otpCooldown.get(email);
 
@@ -263,9 +320,15 @@ app.post("/send-otp", async (req,res)=>{
       });
     }
 
-    otpCooldown.set(email, Date.now());
+    otpCooldown.set(
+      email,
+      Date.now()
+    );
 
+    // =========================================
     // VALIDATE EMAIL
+    // =========================================
+
     const validation =
       await validateRealEmail(email);
 
@@ -277,44 +340,64 @@ app.post("/send-otp", async (req,res)=>{
       });
     }
 
-    // OTP
-    const otp =
-      String(
-        Math.floor(
-          100000 + Math.random() * 900000
-        )
-      );
+    // =========================================
+    // GENERATE OTP
+    // =========================================
+
+    const otp = String(
+      Math.floor(
+        100000 + Math.random() * 900000
+      )
+    );
 
     const hashedOtp =
       await bcrypt.hash(otp,10);
 
-    // TOKEN
+    // =========================================
+    // JWT TOKEN
+    // =========================================
+
     const vToken = jwt.sign(
+
       {
         email,
         otp:hashedOtp
       },
+
       JWT_SECRET,
+
       {
         expiresIn:"5m"
       }
     );
 
-    // SEND EMAIL
+    // =========================================
+    // SEND MAIL
+    // =========================================
+
     await transporter.sendMail({
 
-      from:`"Dawa Duniya" <${EMAIL_USER}>`,
+      from:
+`"Dawa Duniya" <${EMAIL_USER}>`,
 
       to:email,
 
       subject:"Your OTP Verification",
 
       html:`
-      <div style="font-family:Poppins,sans-serif;padding:20px;">
+      <div style="
+        font-family:Poppins,sans-serif;
+        padding:20px;
+      ">
 
-        <h2>Dawa Duniya OTP</h2>
+        <h2>
+          Dawa Duniya OTP
+        </h2>
 
-        <h1 style="letter-spacing:4px;">
+        <h1 style="
+          letter-spacing:5px;
+          color:#00c896;
+        ">
           ${otp}
         </h1>
 
@@ -333,7 +416,10 @@ app.post("/send-otp", async (req,res)=>{
 
   }catch(err){
 
-    console.log("SEND OTP ERROR:", err);
+    console.log(
+      "SEND OTP ERROR:",
+      err
+    );
 
     return res.status(500).json({
       success:false,
@@ -350,9 +436,15 @@ app.post("/verify-otp", async (req,res)=>{
 
   try{
 
-    const { userOtp, vToken } = req.body;
+    const {
+      userOtp,
+      vToken
+    } = req.body;
 
-    if(!userOtp || !vToken){
+    if(
+      !userOtp ||
+      !vToken
+    ){
 
       return res.status(400).json({
         success:false,
@@ -360,7 +452,10 @@ app.post("/verify-otp", async (req,res)=>{
       });
     }
 
+    // =========================================
     // VERIFY ATTEMPTS
+    // =========================================
+
     const attempts =
       verifyAttempts.get(vToken) || 0;
 
@@ -372,12 +467,18 @@ app.post("/verify-otp", async (req,res)=>{
       });
     }
 
+    // =========================================
+    // VERIFY JWT
+    // =========================================
+
     let decoded;
 
     try{
 
-      decoded =
-        jwt.verify(vToken, JWT_SECRET);
+      decoded = jwt.verify(
+        vToken,
+        JWT_SECRET
+      );
 
     }catch{
 
@@ -387,7 +488,10 @@ app.post("/verify-otp", async (req,res)=>{
       });
     }
 
-    // OTP MATCH
+    // =========================================
+    // MATCH OTP
+    // =========================================
+
     const match =
       await bcrypt.compare(
         String(userOtp),
@@ -407,24 +511,37 @@ app.post("/verify-otp", async (req,res)=>{
       });
     }
 
+    // =========================================
     // LOGIN TOKEN
+    // =========================================
+
     const loginToken = jwt.sign(
+
       {
         email:decoded.email
       },
+
       JWT_SECRET,
+
       {
         expiresIn:"1h"
       }
     );
 
+    // =========================================
     // COOKIE
-    res.cookie("dawaToken", loginToken, {
-      httpOnly:true,
-      secure:true,
-      sameSite:"none",
-      maxAge:3600000
-    });
+    // =========================================
+
+    res.cookie(
+      "dawaToken",
+      loginToken,
+      {
+        httpOnly:true,
+        secure:true,
+        sameSite:"none",
+        maxAge:3600000
+      }
+    );
 
     return res.json({
       success:true,
@@ -433,7 +550,10 @@ app.post("/verify-otp", async (req,res)=>{
 
   }catch(err){
 
-    console.log("VERIFY OTP ERROR:", err);
+    console.log(
+      "VERIFY OTP ERROR:",
+      err
+    );
 
     return res.status(500).json({
       success:false,
@@ -460,6 +580,10 @@ app.post("/send-link", async (req,res)=>{
       });
     }
 
+    // =========================================
+    // VALIDATE EMAIL
+    // =========================================
+
     const validation =
       await validateRealEmail(email);
 
@@ -471,44 +595,65 @@ app.post("/send-link", async (req,res)=>{
       });
     }
 
+    // =========================================
+    // GENERATE TOKEN
+    // =========================================
+
     const token = jwt.sign(
+
       { email },
+
       JWT_SECRET,
+
       {
         expiresIn:"10m"
       }
     );
 
+    // =========================================
+    // LINK
+    // =========================================
+
     const link =
 `${BASE_URL}/verify-email?token=${token}`;
 
+    // =========================================
+    // SEND MAIL
+    // =========================================
+
     await transporter.sendMail({
 
-      from:`"Dawa Duniya" <${EMAIL_USER}>`,
+      from:
+`"Dawa Duniya" <${EMAIL_USER}>`,
 
       to:email,
 
       subject:"Verify Your Email",
 
       html:`
-      <div style="font-family:Poppins,sans-serif;padding:20px;">
+      <div style="
+        font-family:Poppins,sans-serif;
+        padding:20px;
+      ">
 
-        <h2>Email Verification</h2>
+        <h2>
+          Email Verification
+        </h2>
 
         <p>
-          Click button below to verify email
+          Click button below
         </p>
 
         <a
           href="${link}"
           style="
             display:inline-block;
-            padding:12px 20px;
+            padding:12px 22px;
             background:#00c896;
             color:white;
             text-decoration:none;
             border-radius:10px;
-            margin-top:10px;
+            margin-top:12px;
           "
         >
           Verify Email
@@ -524,7 +669,10 @@ app.post("/send-link", async (req,res)=>{
 
   }catch(err){
 
-    console.log("SEND LINK ERROR:", err);
+    console.log(
+      "SEND LINK ERROR:",
+      err
+    );
 
     return res.status(500).json({
       success:false,
@@ -546,29 +694,56 @@ app.get("/verify-email", (req,res)=>{
     if(!token){
 
       return res.send(`
-        <h2>Invalid verification link</h2>
+        <h2>
+          Invalid verification link
+        </h2>
       `);
     }
 
-    const decoded =
-      jwt.verify(token, JWT_SECRET);
+    // =========================================
+    // VERIFY JWT
+    // =========================================
+
+    const decoded = jwt.verify(
+      token,
+      JWT_SECRET
+    );
+
+    // =========================================
+    // LOGIN TOKEN
+    // =========================================
 
     const loginToken = jwt.sign(
+
       {
         email:decoded.email
       },
+
       JWT_SECRET,
+
       {
         expiresIn:"1h"
       }
     );
 
-    res.cookie("dawaToken", loginToken, {
-      httpOnly:true,
-      secure:true,
-      sameSite:"none",
-      maxAge:3600000
-    });
+    // =========================================
+    // COOKIE
+    // =========================================
+
+    res.cookie(
+      "dawaToken",
+      loginToken,
+      {
+        httpOnly:true,
+        secure:true,
+        sameSite:"none",
+        maxAge:3600000
+      }
+    );
+
+    // =========================================
+    // REDIRECT
+    // =========================================
 
     return res.redirect(
       `${BASE_URL}/dashboard.html`
@@ -576,10 +751,15 @@ app.get("/verify-email", (req,res)=>{
 
   }catch(err){
 
-    console.log("VERIFY LINK ERROR:", err);
+    console.log(
+      "VERIFY LINK ERROR:",
+      err
+    );
 
     return res.send(`
-      <h2>Invalid or expired link</h2>
+      <h2>
+        Invalid or expired link
+      </h2>
     `);
   }
 });
