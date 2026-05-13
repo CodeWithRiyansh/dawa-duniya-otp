@@ -308,7 +308,11 @@ app.post("/send-link", async (req, res) => {
       expiresIn: "10m",
     });
 
-    const link = `http://localhost:3000/verify-email?token=${token}`;
+    const BASE_URL =
+  process.env.BASE_URL ||
+  "https://dawa-duniya-otp.vercel.app";
+
+const link = `${BASE_URL}/verify-email?token=${token}`;
 
     await transporter.sendMail({
       from: `"Dawa Duniya" <${EMAIL_USER}>`,
