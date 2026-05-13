@@ -1,168 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Dawa Duniya | Login</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 
 <style>
+
 *{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:'Poppins', sans-serif;
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Poppins',sans-serif;
 }
 
 body{
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background:linear-gradient(135deg,#0f172a,#1e293b,#0f172a);
-    overflow:hidden;
-    padding:20px;
-}
-
-body::before,
-body::after{
-    content:"";
-    position:absolute;
-    width:500px;
-    height:500px;
-    filter:blur(120px);
-    opacity:.35;
-    animation:floatGlow 8s ease-in-out infinite;
-}
-
-body::before{
-    background:#00ffcc;
-    top:-150px;
-    left:-150px;
-}
-
-body::after{
-    background:#3b82f6;
-    bottom:-150px;
-    right:-150px;
-    animation-delay:3s;
-}
-
-@keyframes floatGlow{
-    0%,100%{
-        transform:translateY(0px) scale(1);
-    }
-    50%{
-        transform:translateY(30px) scale(1.1);
-    }
+min-height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+background:linear-gradient(135deg,#0f172a,#1e293b,#0f172a);
+padding:20px;
+overflow:hidden;
 }
 
 .wrapper{
-    width:100%;
-    max-width:430px;
-    padding:40px 30px;
-    border-radius:22px;
-    background:rgba(255,255,255,.08);
-    backdrop-filter:blur(18px);
-    border:1px solid rgba(255,255,255,.12);
-    box-shadow:0 25px 60px rgba(0,0,0,.5);
-    text-align:center;
-    position:relative;
-    z-index:5;
+width:100%;
+max-width:430px;
+padding:40px 30px;
+border-radius:22px;
+background:rgba(255,255,255,.08);
+backdrop-filter:blur(18px);
+border:1px solid rgba(255,255,255,.12);
+text-align:center;
 }
 
 .logo{
-    font-size:30px;
-    font-weight:600;
-    color:#00ffcc;
+font-size:30px;
+font-weight:700;
+color:#00ffcc;
 }
 
 .tagline{
-    font-size:13px;
-    color:#cbd5e1;
-    margin-bottom:25px;
+font-size:13px;
+color:#cbd5e1;
+margin-bottom:25px;
 }
 
 .tabs{
-    display:flex;
-    border-radius:12px;
-    overflow:hidden;
-    margin-bottom:18px;
+display:flex;
+margin-bottom:20px;
+overflow:hidden;
+border-radius:12px;
 }
 
 .tab{
-    flex:1;
-    padding:12px;
-    cursor:pointer;
-    background:#1e293b;
-    color:white;
-    font-size:13px;
-    transition:.3s;
+flex:1;
+padding:12px;
+background:#1e293b;
+color:white;
+cursor:pointer;
 }
 
 .tab.active{
-    background:#00ffcc;
-    color:#000;
-    font-weight:600;
+background:#00ffcc;
+color:black;
+font-weight:600;
 }
 
 input{
-    width:100%;
-    padding:15px;
-    margin:10px 0;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.15);
-    background:rgba(255,255,255,.05);
-    color:white;
-    outline:none;
-}
-
-input::placeholder{
-    color:#94a3b8;
+width:100%;
+padding:15px;
+margin:10px 0;
+border:none;
+border-radius:14px;
+background:rgba(255,255,255,.06);
+color:white;
+outline:none;
 }
 
 button{
-    width:100%;
-    padding:15px;
-    margin-top:10px;
-    border:none;
-    border-radius:14px;
-    font-weight:600;
-    cursor:pointer;
-    transition:.3s;
-}
-
-button:hover{
-    transform:translateY(-2px);
+width:100%;
+padding:15px;
+margin-top:10px;
+border:none;
+border-radius:14px;
+font-weight:600;
+cursor:pointer;
 }
 
 .primary{
-    background:linear-gradient(135deg,#00ffcc,#00a884);
-    color:#000;
+background:linear-gradient(135deg,#00ffcc,#00a884);
+color:black;
 }
 
 .secondary{
-    background:linear-gradient(135deg,#3b82f6,#2563eb);
-    color:#fff;
+background:linear-gradient(135deg,#3b82f6,#2563eb);
+color:white;
 }
 
 .hidden{
-    display:none;
+display:none;
 }
 
 #msg{
-    margin-top:15px;
-    font-size:13px;
-    color:#fff;
-    min-height:20px;
+margin-top:15px;
+font-size:13px;
+min-height:20px;
+color:white;
 }
 
-@media(max-width:500px){
-    .wrapper{
-        padding:30px 20px;
-    }
-}
 </style>
 </head>
 
@@ -170,47 +119,69 @@ button:hover{
 
 <div class="wrapper">
 
-    <div class="logo">Dawa Duniya</div>
-    <div class="tagline">Aapki sehat ka sathi ❤️</div>
+<div class="logo">Dawa Duniya</div>
+<div class="tagline">
+Aapki sehat ka sathi ❤️
+</div>
 
-    <div class="tabs">
-        <div class="tab active" id="otpTab">OTP Login</div>
-        <div class="tab" id="linkTab">Email Link</div>
-    </div>
+<div class="tabs">
+<div class="tab active" id="otpTab">
+OTP Login
+</div>
 
-    <input type="email" id="email" placeholder="Enter your email" />
+<div class="tab" id="linkTab">
+Email Link
+</div>
+</div>
 
-    <!-- OTP -->
-    <div id="otpBox">
-        <button class="primary" id="sendOtpBtn">
-            Send OTP
-        </button>
+<input
+type="email"
+id="email"
+placeholder="Enter your email"
+/>
 
-        <input type="text" id="otp" placeholder="Enter OTP" />
+<!-- OTP -->
 
-        <button class="secondary" id="verifyBtn">
-            Verify OTP
-        </button>
-    </div>
+<div id="otpBox">
 
-    <!-- EMAIL LINK -->
-    <div id="linkBox" class="hidden">
-        <button class="primary" id="sendLinkBtn">
-            Send Verification Link
-        </button>
+<button class="primary" id="sendOtpBtn">
+Send OTP
+</button>
 
-        <p style="font-size:12px;color:#94a3b8;margin-top:10px;">
-            Check your email inbox
-        </p>
-    </div>
+<input
+type="text"
+id="otp"
+placeholder="Enter OTP"
+/>
 
-    <div id="msg"></div>
+<button class="secondary" id="verifyBtn">
+Verify OTP
+</button>
+
+</div>
+
+<!-- EMAIL LINK -->
+
+<div id="linkBox" class="hidden">
+
+<button class="primary" id="sendLinkBtn">
+Send Verification Link
+</button>
+
+<p style="font-size:12px;color:#94a3b8;margin-top:10px;">
+Check your email inbox
+</p>
+
+</div>
+
+<div id="msg"></div>
 
 </div>
 
 <script>
 
-const API_URL = "https://dawa-duniya-otp.vercel.app";
+const API_URL =
+window.location.origin;
 
 let tempVToken = "";
 
@@ -218,38 +189,40 @@ let tempVToken = "";
 // HELPERS
 // ======================================================
 
-function showMessage(text, color="#fff"){
-    const msg = document.getElementById("msg");
-    msg.innerText = text;
-    msg.style.color = color;
+function showMessage(text,color="#fff"){
+const msg=document.getElementById("msg");
+msg.innerText=text;
+msg.style.color=color;
 }
 
 // ======================================================
-// TAB SWITCH
+// TABS
 // ======================================================
 
-const otpTab = document.getElementById("otpTab");
-const linkTab = document.getElementById("linkTab");
+const otpTab=document.getElementById("otpTab");
+const linkTab=document.getElementById("linkTab");
 
-const otpBox = document.getElementById("otpBox");
-const linkBox = document.getElementById("linkBox");
+const otpBox=document.getElementById("otpBox");
+const linkBox=document.getElementById("linkBox");
 
-otpTab.addEventListener("click", () => {
+otpTab.addEventListener("click",()=>{
 
-    otpBox.classList.remove("hidden");
-    linkBox.classList.add("hidden");
+otpBox.classList.remove("hidden");
+linkBox.classList.add("hidden");
 
-    otpTab.classList.add("active");
-    linkTab.classList.remove("active");
+otpTab.classList.add("active");
+linkTab.classList.remove("active");
+
 });
 
-linkTab.addEventListener("click", () => {
+linkTab.addEventListener("click",()=>{
 
-    otpBox.classList.add("hidden");
-    linkBox.classList.remove("hidden");
+otpBox.classList.add("hidden");
+linkBox.classList.remove("hidden");
 
-    linkTab.classList.add("active");
-    otpTab.classList.remove("active");
+linkTab.classList.add("active");
+otpTab.classList.remove("active");
+
 });
 
 // ======================================================
@@ -257,59 +230,64 @@ linkTab.addEventListener("click", () => {
 // ======================================================
 
 document.getElementById("sendOtpBtn")
-.addEventListener("click", async () => {
+.addEventListener("click",async()=>{
 
-    try{
+try{
 
-        const email =
-            document.getElementById("email").value.trim();
+const email=
+document.getElementById("email").value.trim();
 
-        if(!email){
-            return showMessage("Enter email", "#ff6b6b");
-        }
+if(!email){
+return showMessage("Enter email","#ff6b6b");
+}
 
-        showMessage("Sending OTP...", "#00ffcc");
+showMessage("Sending OTP...","#00ffcc");
 
-        const res = await fetch(`${API_URL}/send-otp`,{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({ email })
-        });
+const res=await fetch(`${API_URL}/send-otp`,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({email})
+});
 
-        const data = await res.json();
+const data=await res.json();
 
-        console.log("OTP RESPONSE:", data);
+console.log(data);
 
-        if(data.success){
+if(data.success){
 
-            tempVToken = data.vToken;
+tempVToken=data.vToken;
 
-            localStorage.setItem(
-                "tempVToken",
-                data.vToken
-            );
+localStorage.setItem(
+"tempVToken",
+data.vToken
+);
 
-            showMessage("OTP sent successfully 🚀", "#00ffcc");
+showMessage(
+"OTP sent successfully 🚀",
+"#00ffcc"
+);
 
-        }else{
+}else{
 
-            showMessage(
-                data.message || "OTP failed",
-                "#ff6b6b"
-            );
-        }
+showMessage(
+data.message || "Failed",
+"#ff6b6b"
+);
 
-    }catch(err){
+}
 
-        console.log(err);
+}catch(err){
 
-        showMessage(
-            "Network error",
-            "#ff6b6b"
-        );
-    }
+console.log(err);
+
+showMessage(
+"Network error",
+"#ff6b6b"
+);
+
+}
 
 });
 
@@ -318,135 +296,142 @@ document.getElementById("sendOtpBtn")
 // ======================================================
 
 document.getElementById("verifyBtn")
-.addEventListener("click", async () => {
+.addEventListener("click",async()=>{
 
-    try{
+try{
 
-        const otp =
-            document.getElementById("otp").value.trim();
+const otp=
+document.getElementById("otp").value.trim();
 
-        const savedToken =
-            localStorage.getItem("tempVToken");
+const savedToken=
+localStorage.getItem("tempVToken");
 
-        if(!otp){
-            return showMessage("Enter OTP", "#ff6b6b");
-        }
+if(!otp){
+return showMessage("Enter OTP","#ff6b6b");
+}
 
-        if(!savedToken){
-            return showMessage(
-                "OTP session expired",
-                "#ff6b6b"
-            );
-        }
+if(!savedToken){
+return showMessage(
+"OTP expired",
+"#ff6b6b"
+);
+}
 
-        showMessage("Verifying...", "#60a5fa");
+showMessage("Verifying...","#60a5fa");
 
-        const res = await fetch(`${API_URL}/verify-otp`,{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({
-                userOtp: otp,
-                vToken: savedToken
-            })
-        });
+const res=await fetch(`${API_URL}/verify-otp`,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+userOtp:otp,
+vToken:savedToken
+})
+});
 
-        const data = await res.json();
+const data=await res.json();
 
-        console.log("VERIFY RESPONSE:", data);
+console.log(data);
 
-        if(data.success){
+if(data.success){
 
-            localStorage.setItem(
-                "dawaToken",
-                data.token
-            );
+localStorage.setItem(
+"dawaToken",
+data.token
+);
 
-            showMessage(
-                "Login successful 🚀",
-                "#00ffcc"
-            );
+showMessage(
+"Login successful 🚀",
+"#00ffcc"
+);
 
-            setTimeout(() => {
-                window.location.href = "dashboard.html";
-            },1000);
+setTimeout(()=>{
+window.location.href="/dashboard.html";
+},1000);
 
-        }else{
+}else{
 
-            showMessage(
-                data.message || "Invalid OTP",
-                "#ff6b6b"
-            );
-        }
+showMessage(
+data.message || "Invalid OTP",
+"#ff6b6b"
+);
 
-    }catch(err){
+}
 
-        console.log(err);
+}catch(err){
 
-        showMessage(
-            "Verification failed",
-            "#ff6b6b"
-        );
-    }
+console.log(err);
+
+showMessage(
+"Verification failed",
+"#ff6b6b"
+);
+
+}
 
 });
 
 // ======================================================
-// SEND EMAIL LINK
+// EMAIL LINK
 // ======================================================
 
 document.getElementById("sendLinkBtn")
-.addEventListener("click", async () => {
+.addEventListener("click",async()=>{
 
-    try{
+try{
 
-        const email =
-            document.getElementById("email").value.trim();
+const email=
+document.getElementById("email").value.trim();
 
-        if(!email){
-            return showMessage("Enter email", "#ff6b6b");
-        }
+if(!email){
+return showMessage(
+"Enter email",
+"#ff6b6b"
+);
+}
 
-        showMessage(
-            "Sending verification link...",
-            "#00ffcc"
-        );
+showMessage(
+"Sending verification link...",
+"#00ffcc"
+);
 
-        const res = await fetch(`${API_URL}/send-link`,{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({ email })
-        });
+const res=await fetch(`${API_URL}/send-link`,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({email})
+});
 
-        const data = await res.json();
+const data=await res.json();
 
-        if(data.success){
+if(data.success){
 
-            showMessage(
-                "Verification link sent 🚀",
-                "#00ffcc"
-            );
+showMessage(
+"Verification link sent 🚀",
+"#00ffcc"
+);
 
-        }else{
+}else{
 
-            showMessage(
-                data.message || "Failed",
-                "#ff6b6b"
-            );
-        }
+showMessage(
+data.message || "Failed",
+"#ff6b6b"
+);
 
-    }catch(err){
+}
 
-        console.log(err);
+}catch(err){
 
-        showMessage(
-            "Network error",
-            "#ff6b6b"
-        );
-    }
+console.log(err);
+
+showMessage(
+"Network error",
+"#ff6b6b"
+);
+
+}
 
 });
 

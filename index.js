@@ -15,37 +15,30 @@ require("dotenv").config();
 const app = express();
 
 // ======================================================
-// ENV CHECK
+// ENV
 // ======================================================
+
 const { JWT_SECRET, EMAIL_USER, EMAIL_PASS } = process.env;
 
 if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
-  console.error("❌ Missing ENV variables");
+  console.log("❌ Missing ENV variables");
   process.exit(1);
 }
 
 // ======================================================
 // SECURITY
 // ======================================================
+
 app.use(
   helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        imgSrc: ["'self'", "data:"],
-        connectSrc: ["'self'"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        objectSrc: ["'none'"],
-      },
-    },
+    contentSecurityPolicy: false,
   })
 );
 
 // ======================================================
 // CORS
 // ======================================================
+
 app.use(
   cors({
     origin: [
@@ -60,20 +53,23 @@ app.use(
 // ======================================================
 // MIDDLEWARE
 // ======================================================
+
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 app.use(morgan("dev"));
+
 app.use(express.static(path.join(__dirname, "public")));
 
 // ======================================================
 // RATE LIMIT
 // ======================================================
+
 const otpLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 10,
   message: {
     success: false,
-    message: "Too many OTP requests. Try after 5 minutes.",
+    message: "Too many requests. Try again later.",
   },
 });
 
@@ -83,11 +79,13 @@ app.use("/send-link", otpLimiter);
 // ======================================================
 // VALIDATION
 // ======================================================
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ======================================================
 // TRUST SYSTEM
 // ======================================================
+
 const otpAttemptsByEmail = new Map();
 const otpAttemptsByIP = new Map();
 const trustScore = new Map();
@@ -95,6 +93,7 @@ const trustScore = new Map();
 // ======================================================
 // EMAIL TRANSPORT
 // ======================================================
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -106,6 +105,7 @@ const transporter = nodemailer.createTransport({
 // ======================================================
 // HELPERS
 // ======================================================
+
 function getClientIP(req) {
   return (
     req.headers["x-forwarded-for"]?.split(",")[0] ||
@@ -118,6 +118,7 @@ async function isDisposableEmail(email) {
     const res = await axios.get(
       `https://open.kickbox.com/v1/disposable/${email}`
     );
+
     return res.data.disposable;
   } catch {
     return false;
@@ -130,57 +131,67 @@ function updateTrust(email, domain, disposable) {
   const trusted = [
     "gmail.com",
     "outlook.com",
-    "yahoo.com",
     "icloud.com",
     "hotmail.com",
+    "yahoo.com",
   ];
 
   if (trusted.includes(domain)) score += 2;
+
   if (disposable) score -= 3;
 
   trustScore.set(email, score);
+
   return score;
 }
 
 // ======================================================
-// ROUTES
-// ======================================================
-
 // HEALTH
+// ======================================================
+
 app.get("/health", (req, res) => {
-  res.json({ success: true, message: "API running 🚀" });
+  res.json({
+    success: true,
+    message: "API running 🚀",
+  });
 });
 
+// ======================================================
 // HOME
+// ======================================================
+
 app.get("/", (req, res) => {
-  res.json({ success: true, message: "Dawa Duniya Auth API" });
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // ======================================================
-// OTP FLOW
+// SEND OTP
 // ======================================================
+
 app.post("/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
+
     const ip = getClientIP(req);
 
     if (!email || !emailRegex.test(email)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid email format",
+        message: "Invalid email",
       });
     }
 
     const domain = email.split("@")[1].toLowerCase();
 
     // RATE LIMIT LOGIC
+
     const emailCount = otpAttemptsByEmail.get(email) || 0;
     const ipCount = otpAttemptsByIP.get(ip) || 0;
 
     if (emailCount >= 3) {
       return res.status(429).json({
         success: false,
-        message: "Too many OTP requests for this email",
+        message: "Too many OTP requests",
       });
     }
 
@@ -195,9 +206,9 @@ app.post("/send-otp", async (req, res) => {
     otpAttemptsByIP.set(ip, ipCount + 1);
 
     // DISPOSABLE CHECK
+
     const disposable = await isDisposableEmail(email);
 
-    // TRUST SCORE
     const score = updateTrust(email, domain, disposable);
 
     if (disposable && score < 0) {
@@ -207,16 +218,25 @@ app.post("/send-otp", async (req, res) => {
       });
     }
 
-    let requireCaptcha = score <= 0 || disposable;
-
     // OTP
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
+
+    const otp = String(
+      Math.floor(100000 + Math.random() * 900000)
+    );
+
+    console.log("OTP:", otp);
+
     const hashedOtp = await bcrypt.hash(otp, 10);
 
     const vToken = jwt.sign(
-      { email, otp: hashedOtp },
+      {
+        email,
+        otp: hashedOtp,
+      },
       JWT_SECRET,
-      { expiresIn: "5m" }
+      {
+        expiresIn: "5m",
+      }
     );
 
     await transporter.sendMail({
@@ -224,23 +244,21 @@ app.post("/send-otp", async (req, res) => {
       to: email,
       subject: "OTP Verification",
       html: `
-        <h2>Your OTP</h2>
-        <h1>${otp}</h1>
-        <p>Valid for 5 minutes</p>
+        <div style="font-family:sans-serif;padding:20px;">
+          <h2>Dawa Duniya OTP</h2>
+          <h1>${otp}</h1>
+          <p>Valid for 5 minutes.</p>
+        </div>
       `,
     });
 
     return res.json({
       success: true,
       vToken,
-      requireCaptcha,
-      trustScore: score,
-      availableMethods: {
-        otp: true,
-        emailLink: true,
-      },
     });
   } catch (err) {
+    console.log(err);
+
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -251,12 +269,9 @@ app.post("/send-otp", async (req, res) => {
 // ======================================================
 // VERIFY OTP
 // ======================================================
+
 app.post("/verify-otp", async (req, res) => {
-
   try {
-
-    console.log("BODY:", req.body);
-
     const { userOtp, vToken } = req.body;
 
     if (!userOtp || !vToken) {
@@ -266,143 +281,153 @@ app.post("/verify-otp", async (req, res) => {
       });
     }
 
-    // JWT VERIFY
     let decoded;
 
     try {
-
       decoded = jwt.verify(vToken, JWT_SECRET);
-
-      console.log("DECODED:", decoded);
-
-    } catch (jwtErr) {
-
-      console.log("JWT ERROR:", jwtErr.message);
-
+    } catch (err) {
       return res.status(400).json({
         success: false,
         message: "OTP expired or invalid",
       });
     }
 
-    // OTP MATCH
     const isMatch = await bcrypt.compare(
       String(userOtp),
       decoded.otp
     );
 
-    console.log("OTP MATCH:", isMatch);
-
     if (!isMatch) {
-
       return res.status(400).json({
         success: false,
         message: "Invalid OTP",
       });
     }
 
-    // LOGIN TOKEN
     const token = jwt.sign(
-      { email: decoded.email },
+      {
+        email: decoded.email,
+      },
       JWT_SECRET,
-      { expiresIn: "1h" }
+      {
+        expiresIn: "1h",
+      }
     );
-
-    // COOKIE
-    res.cookie("dawaToken", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 3600000,
-    });
 
     return res.json({
       success: true,
       token,
     });
-
   } catch (err) {
-
-    console.log("VERIFY ERROR:", err);
+    console.log(err);
 
     return res.status(500).json({
       success: false,
-      message: "Server error",
+      message: "Verification failed",
     });
   }
 });
+
 // ======================================================
-// LINK FLOW
+// SEND EMAIL LINK
 // ======================================================
+
 app.post("/send-link", async (req, res) => {
   try {
     const { email } = req.body;
 
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ success: false });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email",
+      });
     }
 
-    const token = jwt.sign({ email }, JWT_SECRET, {
-      expiresIn: "10m",
-    });
+    const token = jwt.sign(
+      { email },
+      JWT_SECRET,
+      {
+        expiresIn: "10m",
+      }
+    );
 
     const BASE_URL =
-  process.env.BASE_URL ||
-  "https://dawa-duniya-otp.vercel.app";
+      process.env.BASE_URL ||
+      "https://dawa-duniya-otp.vercel.app";
 
-const link = `${BASE_URL}/verify-email?token=${token}`;
+    const link = `${BASE_URL}/verify-email?token=${token}`;
 
     await transporter.sendMail({
       from: `"Dawa Duniya" <${EMAIL_USER}>`,
       to: email,
       subject: "Verify Email",
-      html: `<a href="${link}">Click to verify</a>`,
+      html: `
+        <div style="font-family:sans-serif;padding:20px;">
+          <h2>Email Verification</h2>
+          <a href="${link}">
+            Verify Email
+          </a>
+        </div>
+      `,
     });
 
-    return res.json({ success: true });
-  } catch {
-    return res.status(500).json({ success: false });
+    return res.json({
+      success: true,
+    });
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send link",
+    });
   }
 });
 
 // ======================================================
-// VERIFY LINK
+// VERIFY EMAIL
 // ======================================================
-aapp.get("/verify-email", (req, res) => {
 
+app.get("/verify-email", (req, res) => {
   try {
-
     const { token } = req.query;
 
     if (!token) {
-      return res.status(400).send("Invalid verification link");
+      return res.status(400).send("Invalid link");
     }
 
-    // VERIFY JWT
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    // LOGIN TOKEN
     const loginToken = jwt.sign(
-      { email: decoded.email },
+      {
+        email: decoded.email,
+      },
       JWT_SECRET,
-      { expiresIn: "1h" }
+      {
+        expiresIn: "1h",
+      }
     );
 
-    // COOKIE
-    res.cookie("dawaToken", loginToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 3600000,
-    });
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Verifying...</title>
+      </head>
 
-    // REDIRECT TO DASHBOARD
-    return res.redirect(
-      "https://dawa-duniya-otp.vercel.app/dashboard.html"
-    );
+      <body style="background:#0f172a;color:white;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;">
+      
+        <h2>Email Verified 🚀</h2>
 
+        <script>
+          localStorage.setItem("dawaToken","${loginToken}");
+          window.location.href="/dashboard.html";
+        </script>
+
+      </body>
+      </html>
+    `);
   } catch (err) {
-
     console.log(err);
 
     return res.status(400).send(`
@@ -410,7 +435,15 @@ aapp.get("/verify-email", (req, res) => {
     `);
   }
 });
+
 // ======================================================
-// EXPORT
+// SERVER
 // ======================================================
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});
+
 module.exports = app;
