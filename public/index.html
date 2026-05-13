@@ -8,304 +8,293 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet"/>
 
 <style>
+/* 1. CSS RESET & FIXES */
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box; /* Sabse important: alignment isi se thik hogi */
+}
+
 body{
-    margin:0;
-    font-family:Poppins;
-    height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
+    font-family: 'Poppins', sans-serif;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     background: linear-gradient(135deg,#0f172a,#111827);
+    overflow: hidden;
 }
 
 /* CARD */
 .card{
-    width:380px;
-    padding:28px;
-    border-radius:18px;
-    background:rgba(255,255,255,0.08);
-    backdrop-filter: blur(18px);
-    border:1px solid rgba(255,255,255,0.15);
-    text-align:center;
-    color:white;
+    width: 380px;
+    padding: 30px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    text-align: center;
+    color: white;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
 }
 
-/* INPUT */
-input{
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    border: none;
-    border-radius: 10px;
+h2 { margin-bottom: 5px; color: #00ffcc; }
+
+/* INPUT & BUTTONS COMMON */
+input, button {
+    width: 100%; /* Ab ye card se bahar nahi jayega */
+    display: block;
+    margin-top: 15px;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 15px;
+    transition: 0.3s;
+}
+
+input {
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: white;
     outline: none;
-    display: block; /* Isse alignment sahi rahegi */
 }
 
-/* BUTTON */
-button{
-    width:100%;
-    padding:12px;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:600;
-    transition:0.2s;
+input:focus {
+    background: rgba(255,255,255,0.1);
+    border-color: #00ffcc;
 }
 
-button:hover{
-    transform:scale(1.02);
+button {
+    padding: 14px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
 }
 
-.primary{
-    background:#00ffcc;
-    color:#000;
+button:hover { transform: translateY(-2px); opacity: 0.9; }
+button:active { transform: translateY(0); }
+button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.primary { background: #00ffcc; color: #000; }
+.secondary { background: #3b82f6; color: #fff; }
+
+/* OTP CONTAINER */
+.otp-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 20px 0;
 }
 
-.secondary{
-    background:#3b82f6;
-    color:#fff;
+.otp-box {
+    width: 45px;
+    height: 55px;
+    margin-top: 0; /* Resetting default input margin */
+    text-align: center;
+    font-size: 20px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
 }
 
-/* OTP BOX */
-.otp-container{
-    display:flex;
-    justify-content:space-between;
-    gap:8px;
-    margin:15px 0;
+.otp-box:focus {
+    transform: scale(1.05);
+    border-color: #00ffcc;
+    box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
 }
 
-.otp-box{
-    width:45px;
-    height:50px;
-    text-align:center;
-    font-size:18px;
-    border-radius:10px;
-    border:none;
-    outline:none;
-    transition:0.2s;
-}
+/* UTILS */
+.timer { font-size: 13px; margin: 15px 0; color: #94a3b8; }
+.hidden { display: none; }
 
-.otp-box:focus{
-    transform:scale(1.2);
-    box-shadow:0 0 12px #00ffcc;
+/* SHAKE ANIMATION */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
 }
-
-/* SHAKE */
-@keyframes shake{
-    0%,100%{transform:translateX(0)}
-    25%{transform:translateX(-5px)}
-    50%{transform:translateX(5px)}
-    75%{transform:translateX(-5px)}
-}
-.shake{
-    animation:shake 0.3s;
-}
-
-/* TIMER */
-.timer{
-    font-size:12px;
-    margin:10px 0;
-    opacity:0.8;
-}
+.shake { animation: shake 0.4s; }
 
 /* TOAST */
-#toast{
-    position:fixed;
-    bottom:30px;
-    left:50%;
-    transform:translateX(-50%);
-    background:#111;
-    padding:10px 18px;
-    border-radius:10px;
-    opacity:0;
-    transition:0.3s;
-    color:white;
+#toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #fff;
+    color: #000;
+    padding: 12px 25px;
+    border-radius: 30px;
+    font-weight: 500;
+    transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 0;
+    z-index: 1000;
 }
-.show{
-    opacity:1;
-    transform:translateX(-50%) translateY(-10px);
-}
-
-.hidden{display:none;}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 
 <body>
 
 <div class="card">
+    <h2>Dawa Duniya</h2>
+    <p style="font-size:12px; opacity:0.7; margin-bottom: 20px;">Aapki sehat ka sathi ❤️</p>
 
-<h2>Dawa Duniya</h2>
-<p style="font-size:12px;opacity:0.8">Aapki sehat ka sathi ❤️</p>
-
-<!-- EMAIL -->
-<div id="emailSection">
-    <input id="email" type="email" placeholder="Enter Email"/>
-    <button class="primary" onclick="sendOTP()">Send OTP</button>
-</div>
-
-<!-- OTP -->
-<div id="otpSection" class="hidden">
-
-    <div class="otp-container">
-        <input class="otp-box" maxlength="1">
-        <input class="otp-box" maxlength="1">
-        <input class="otp-box" maxlength="1">
-        <input class="otp-box" maxlength="1">
-        <input class="otp-box" maxlength="1">
-        <input class="otp-box" maxlength="1">
+    <!-- EMAIL SECTION -->
+    <div id="emailSection">
+        <input id="email" type="email" placeholder="Enter Email Address" autocomplete="off"/>
+        <button class="primary" onclick="sendOTP()">Send OTP</button>
     </div>
 
-    <button class="secondary" onclick="verifyOTP()">Verify OTP</button>
+    <!-- OTP SECTION -->
+    <div id="otpSection" class="hidden">
+        <div class="otp-container" id="otpBoxContainer">
+            <input class="otp-box" maxlength="1" inputmode="numeric">
+            <input class="otp-box" maxlength="1" inputmode="numeric">
+            <input class="otp-box" maxlength="1" inputmode="numeric">
+            <input class="otp-box" maxlength="1" inputmode="numeric">
+            <input class="otp-box" maxlength="1" inputmode="numeric">
+            <input class="otp-box" maxlength="1" inputmode="numeric">
+        </div>
 
-    <div class="timer" id="timer"></div>
-
-    <button id="resendBtn" class="primary" onclick="resendOTP()" disabled>
-        Resend OTP
-    </button>
-
-</div>
-
+        <button class="secondary" onclick="verifyOTP()">Verify OTP</button>
+        <div class="timer" id="timer"></div>
+        <button id="resendBtn" class="primary" onclick="resendOTP()" disabled style="margin-top: 5px;">
+            Resend OTP
+        </button>
+    </div>
 </div>
 
 <div id="toast"></div>
 
 <script>
-const API = window.location.hostname==="localhost"
-? "http://localhost:3000"
-: "https://dawa-duniya-otp.vercel.app";
+const API = window.location.hostname === "localhost" 
+    ? "http://localhost:3000" 
+    : "https://dawa-duniya-otp.vercel.app";
 
-let tempVToken="";
-let countdown=60;
+let tempVToken = "";
+let countdown = 60;
 let interval;
 
-/* TOAST */
-function toast(msg){
-    const t=document.getElementById("toast");
-    t.innerText=msg;
+function toast(msg) {
+    const t = document.getElementById("toast");
+    t.innerText = msg;
     t.classList.add("show");
-    setTimeout(()=>t.classList.remove("show"),1500);
+    setTimeout(() => t.classList.remove("show"), 2500);
 }
 
-/* SEND OTP */
-async function sendOTP(){
-    const email=document.getElementById("email").value;
-
-    if(!email){
-        toast("Enter email");
+async function sendOTP() {
+    const email = document.getElementById("email").value;
+    if(!email || !email.includes('@')) {
+        toast("Please enter a valid email");
         return;
     }
 
-    const res=await fetch(`${API}/send-otp`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email})
-    });
+    try {
+        const res = await fetch(`${API}/send-otp`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
 
-    const data=await res.json();
-
-    if(data.success){
-        tempVToken=data.vToken;
-        document.getElementById("emailSection").style.display="none";
-        document.getElementById("otpSection").style.display="block";
-        startTimer();
-        toast("OTP sent");
-    }else{
-        toast(data.message);
+        if(data.success) {
+            tempVToken = data.vToken;
+            document.getElementById("emailSection").classList.add("hidden");
+            document.getElementById("otpSection").classList.remove("hidden");
+            startTimer();
+            toast("OTP sent to your email");
+        } else {
+            toast(data.message || "Failed to send OTP");
+        }
+    } catch (err) {
+        toast("Server error. Try again.");
     }
 }
 
-/* TIMER */
-function startTimer(){
-    const btn=document.getElementById("resendBtn");
-    const t=document.getElementById("timer");
+function startTimer() {
+    const btn = document.getElementById("resendBtn");
+    const t = document.getElementById("timer");
+    countdown = 60;
+    btn.disabled = true;
 
-    countdown=60;
-    btn.disabled=true;
-
-    interval=setInterval(()=>{
-        t.innerText=`Resend in ${countdown}s`;
+    clearInterval(interval);
+    interval = setInterval(() => {
+        t.innerText = `Resend available in ${countdown}s`;
         countdown--;
-
-        if(countdown<0){
+        if(countdown < 0) {
             clearInterval(interval);
-            btn.disabled=false;
-            t.innerText="You can resend OTP";
+            btn.disabled = false;
+            t.innerText = "You can resend OTP now";
         }
-    },1000);
+    }, 1000);
 }
 
-/* RESEND */
-function resendOTP(){
+function resendOTP() {
     sendOTP();
 }
 
-/* VERIFY OTP */
-async function verifyOTP(){
+async function verifyOTP() {
+    const inputs = document.querySelectorAll(".otp-box");
+    let otp = "";
+    inputs.forEach(i => otp += i.value);
 
-    const inputs=document.querySelectorAll(".otp-box");
-    let otp="";
-
-    inputs.forEach(i=>otp+=i.value);
-
-    if(otp.length!==6){
+    if(otp.length !== 6) {
         shake();
-        toast("Invalid OTP");
+        toast("Please enter 6-digit OTP");
         return;
     }
 
-    const res=await fetch(`${API}/verify-otp`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            userOtp:otp,
-            vToken:tempVToken
-        })
-    });
+    try {
+        const res = await fetch(`${API}/verify-otp`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ userOtp: otp, vToken: tempVToken })
+        });
+        const data = await res.json();
 
-    const data=await res.json();
-
-    if(data.success){
-        localStorage.setItem("dawaToken",data.token);
-        toast("Login success");
-
-        setTimeout(()=>{
-            window.location.href="dashboard.html";
-        },800);
-    }else{
-        shake();
-        toast("Wrong OTP");
+        if(data.success) {
+            localStorage.setItem("dawaToken", data.token);
+            toast("Login Successful! Redirecting...");
+            setTimeout(() => { window.location.href = "dashboard.html"; }, 1000);
+        } else {
+            shake();
+            toast("Invalid OTP. Try again.");
+        }
+    } catch (err) {
+        toast("Verification failed.");
     }
 }
 
-/* SHAKE */
-function shake(){
-    document.querySelector(".otp-container").classList.add("shake");
-    setTimeout(()=>{
-        document.querySelector(".otp-container").classList.remove("shake");
-    },300);
+function shake() {
+    const container = document.getElementById("otpBoxContainer");
+    container.classList.add("shake");
+    setTimeout(() => container.classList.remove("shake"), 400);
 }
 
-/* OTP AUTO MOVE */
-document.addEventListener("DOMContentLoaded",()=>{
-    const inputs=document.querySelectorAll(".otp-box");
-
-    inputs.forEach((input,index)=>{
-        input.addEventListener("input",()=>{
-            if(input.value && index<inputs.length-1){
-                inputs[index+1].focus();
+// OTP AUTO FOCUS LOGIC
+document.addEventListener("DOMContentLoaded", () => {
+    const inputs = document.querySelectorAll(".otp-box");
+    inputs.forEach((input, index) => {
+        input.addEventListener("input", (e) => {
+            if (e.inputType === "deleteContentBackward") return;
+            if (input.value && index < inputs.length - 1) {
+                inputs[index + 1].focus();
             }
         });
 
-        input.addEventListener("keydown",(e)=>{
-            if(e.key==="Backspace" && !input.value && index>0){
-                inputs[index-1].focus();
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Backspace" && !input.value && index > 0) {
+                inputs[index - 1].focus();
             }
         });
 
-        input.addEventListener("paste",(e)=>{
+        input.addEventListener("paste", (e) => {
             e.preventDefault();
-            const data=e.clipboardData.getData("text").split("");
-            inputs.forEach((inp,i)=>inp.value=data[i]||"");
+            const data = e.clipboardData.getData("text").slice(0, 6).split("");
+            inputs.forEach((inp, i) => {
+                if (data[i]) inp.value = data[i];
+            });
+            if(data.length > 0) inputs[Math.min(data.length, 5)].focus();
         });
     });
 });
