@@ -64,7 +64,7 @@ async function validateRealEmail(email) {
     // 2. ❌ BLOCK: Known Temp Mail Domains (Hard-coded list)
     const blockedDomains = [
       "tempmail.com", "yopmail.com", "10minutemail.com", "guerrillamail.com", 
-      "mailinator.com", "trashmail.com", "fakeinbox.com", "temp-mail.org","gcervera.com"
+      "mailinator.com", "trashmail.com", "fakeinbox.com", "temp-mail.org","ditorek376@gcervera.com"
     ];
     if (blockedDomains.includes(domain)) {
       return { valid: false, message: "Temporary/Fake emails are not allowed" };
