@@ -1,153 +1,238 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Dawa Duniya Auth</title>
-  <style>
-    body {
-      font-family: Arial;
-      background: #0f172a;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dawa Duniya | Login</title>
 
-    .box {
-      background: #1e293b;
-      padding: 20px;
-      border-radius: 10px;
-      width: 320px;
-    }
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 6px;
-      border: none;
-    }
+<style>
+/* (YOUR CSS SAME — NO CHANGE) */
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins', sans-serif;
+}
 
-    button {
-      cursor: pointer;
-      background: #22c55e;
-      color: white;
-    }
+body{
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background: linear-gradient(135deg,#0f172a,#1e293b,#0f172a);
+    overflow:hidden;
+}
 
-    .tabs {
-      display: flex;
-      margin-bottom: 10px;
-    }
+/* glow */
+body::before,
+body::after{
+    content:"";
+    position:absolute;
+    width:500px;
+    height:500px;
+    filter:blur(120px);
+    opacity:0.35;
+    animation: floatGlow 8s ease-in-out infinite;
+}
 
-    .tab {
-      flex: 1;
-      padding: 8px;
-      text-align: center;
-      cursor: pointer;
-      background: #334155;
-    }
+body::before{background:#00ffcc; top:-150px; left:-150px;}
+body::after{background:#3b82f6; bottom:-150px; right:-150px; animation-delay:3s;}
 
-    .active {
-      background: #22c55e;
-    }
+@keyframes floatGlow{
+    0%,100%{ transform: translateY(0px) scale(1); }
+    50%{ transform: translateY(30px) scale(1.1); }
+}
 
-    .hidden {
-      display: none;
-    }
-  </style>
+.wrapper{
+    width:100%;
+    max-width:430px;
+    padding:40px 35px;
+    border-radius:22px;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(18px);
+    border:1px solid rgba(255,255,255,0.12);
+    box-shadow:0 25px 60px rgba(0,0,0,0.5);
+    text-align:center;
+}
+
+.logo{font-size:30px;font-weight:600;color:#00ffcc;}
+.tagline{font-size:13px;color:#cbd5e1;margin-bottom:25px;}
+
+input{
+    width:100%;
+    padding:15px;
+    margin:12px 0;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.05);
+    color:white;
+}
+
+button{
+    width:100%;
+    padding:15px;
+    margin-top:10px;
+    border:none;
+    border-radius:14px;
+    font-weight:600;
+    cursor:pointer;
+}
+
+.primary{background:linear-gradient(135deg,#00ffcc,#00a884);color:#000;}
+.secondary{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;}
+
+.tabs{
+    display:flex;
+    margin-bottom:15px;
+    border-radius:12px;
+    overflow:hidden;
+}
+
+.tab{
+    flex:1;
+    padding:10px;
+    cursor:pointer;
+    background:#1e293b;
+    color:white;
+    font-size:13px;
+}
+
+.tab.active{
+    background:#00ffcc;
+    color:#000;
+}
+
+.hidden{display:none;}
+
+#msg{margin-top:15px;font-size:13px;color:#e2e8f0;}
+</style>
 </head>
+
 <body>
 
-<div class="box">
+<div class="wrapper">
 
-  <div class="tabs">
-    <div class="tab active" onclick="setMode('otp')">OTP Login</div>
-    <div class="tab" onclick="setMode('link')">Email Link</div>
-  </div>
+    <div class="logo">Dawa Duniya</div>
+    <div class="tagline">Aapki sehat ka sathi ❤️</div>
 
-  <!-- EMAIL -->
-  <input id="email" placeholder="Enter email" />
+    <!-- MODE SWITCH -->
+    <div class="tabs">
+        <div class="tab active" id="otpTab">OTP Login</div>
+        <div class="tab" id="linkTab">Email Link</div>
+    </div>
 
-  <!-- OTP SECTION -->
-  <div id="otpBox">
-    <button onclick="sendOTP()">Send OTP</button>
-    <input id="otp" placeholder="Enter OTP" />
-    <button onclick="verifyOTP()">Verify OTP</button>
-  </div>
+    <!-- EMAIL -->
+    <input type="email" id="email" placeholder="Enter your email"/>
 
-  <!-- LINK SECTION -->
-  <div id="linkBox" class="hidden">
-    <button onclick="sendLink()">Send Verification Link</button>
-    <p style="font-size:12px;color:#94a3b8;">
-      Check your email inbox and click link
-    </p>
-  </div>
+    <!-- OTP SECTION -->
+    <div id="otpBox">
+        <button class="primary" id="sendOtpBtn">Send OTP</button>
+        <input type="text" id="otp" placeholder="Enter OTP"/>
+        <button class="secondary" id="verifyBtn">Verify OTP</button>
+    </div>
 
-  <p id="msg"></p>
+    <!-- LINK SECTION -->
+    <div id="linkBox" class="hidden">
+        <button class="primary" id="sendLinkBtn">Send Verification Link</button>
+        <p style="font-size:12px;color:#94a3b8;margin-top:10px;">
+            Check your email and click the link
+        </p>
+    </div>
+
+    <div id="msg"></div>
 </div>
 
 <script>
+const API_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:3000"
+    : "https://dawa-duniya-otp.vercel.app";
+
 let mode = "otp";
+let tempVToken = "";
 
-function setMode(m) {
-  mode = m;
+// SWITCH MODE
+document.getElementById("otpTab").onclick = () => {
+    mode = "otp";
+    document.getElementById("otpBox").classList.remove("hidden");
+    document.getElementById("linkBox").classList.add("hidden");
+    document.getElementById("otpTab").classList.add("active");
+    document.getElementById("linkTab").classList.remove("active");
+};
 
-  document.getElementById("otpBox").classList.toggle("hidden", m !== "otp");
-  document.getElementById("linkBox").classList.toggle("hidden", m !== "link");
+document.getElementById("linkTab").onclick = () => {
+    mode = "link";
+    document.getElementById("otpBox").classList.add("hidden");
+    document.getElementById("linkBox").classList.remove("hidden");
+    document.getElementById("linkTab").classList.add("active");
+    document.getElementById("otpTab").classList.remove("active");
+};
 
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  event.target.classList.add("active");
-}
+// SEND OTP
+document.getElementById("sendOtpBtn").onclick = async () => {
+    const email = document.getElementById("email").value;
 
-async function sendOTP() {
-  const email = document.getElementById("email").value;
+    const res = await fetch(`${API_URL}/send-otp`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email})
+    });
 
-  const res = await fetch("/send-otp", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
-  });
+    const data = await res.json();
 
-  const data = await res.json();
+    if(data.success){
+        tempVToken = data.vToken;
+        document.getElementById("msg").innerText = "OTP sent 🚀";
+    } else {
+        document.getElementById("msg").innerText = data.message;
+    }
+};
 
-  document.getElementById("msg").innerText =
-    data.success ? "OTP sent 🚀" : data.message;
-}
+// VERIFY OTP
+document.getElementById("verifyBtn").onclick = async () => {
+    const otp = document.getElementById("otp").value;
 
-async function verifyOTP() {
-  const otp = document.getElementById("otp").value;
-  const vToken = window.vToken; // store later
+    const res = await fetch(`${API_URL}/verify-otp`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            userOtp:otp,
+            vToken:tempVToken
+        })
+    });
 
-  const res = await fetch("/verify-otp", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      userOtp: otp,
-      vToken
-    })
-  });
+    const data = await res.json();
 
-  const data = await res.json();
+    if(data.success){
+        localStorage.setItem("dawaToken", data.token);
+        document.getElementById("msg").innerText = "Login success 🚀";
 
-  document.getElementById("msg").innerText =
-    data.success ? "Login success 🚀" : data.message;
-}
+        setTimeout(()=>{
+            window.location.href="dashboard.html";
+        },800);
 
-async function sendLink() {
-  const email = document.getElementById("email").value;
+    } else {
+        document.getElementById("msg").innerText = data.message;
+    }
+};
 
-  const res = await fetch("/send-link", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
-  });
+// SEND LINK
+document.getElementById("sendLinkBtn").onclick = async () => {
+    const email = document.getElementById("email").value;
 
-  const data = await res.json();
+    const res = await fetch(`${API_URL}/send-link`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email})
+    });
 
-  document.getElementById("msg").innerText =
-    data.success ? "Link sent 🚀" : "Error sending link";
-}
+    const data = await res.json();
+
+    document.getElementById("msg").innerText =
+        data.success ? "Link sent 🚀 check email" : "Error sending link";
+};
 </script>
 
 </body>
