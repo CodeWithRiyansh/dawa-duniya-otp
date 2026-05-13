@@ -8,20 +8,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet"/>
 
 <style>
+* {
+    box-sizing: border-box;
+}
+
 body {
+    margin: 0;
     font-family: Poppins, sans-serif;
     background: linear-gradient(135deg, #e6f7f4, #f0f4f8);
+
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+
+    padding: 20px;
 }
 
 /* CARD */
 .card {
-    width: 380px;
+    width: 100%;
+    max-width: 380px;
     background: #fff;
-    padding: 30px;
+    padding: 28px;
     border-radius: 22px;
     text-align: center;
     box-shadow: 0 15px 40px rgba(0,0,0,0.12);
@@ -30,21 +39,21 @@ body {
 
 /* BRAND */
 h2 {
+    margin: 0;
     color: #00a884;
-    margin-bottom: 5px;
 }
 
 .subtitle {
     font-size: 13px;
     color: #666;
-    margin-bottom: 20px;
+    margin: 6px 0 18px;
 }
 
 /* INPUT */
 input {
     width: 100%;
     padding: 12px;
-    margin: 10px 0;
+    margin: 8px 0;
     border-radius: 10px;
     border: 1px solid #ddd;
     outline: none;
@@ -65,7 +74,8 @@ button {
     cursor: pointer;
     font-weight: bold;
     color: white;
-    transition: 0.25s;
+    margin-top: 8px;
+    transition: 0.2s;
 }
 
 #sendBtn {
@@ -81,20 +91,30 @@ button:hover {
     opacity: 0.95;
 }
 
-/* HIDE */
-.hidden { display: none; }
+/* OTP */
+#otpSection input {
+    text-align: center;
+    font-size: 18px;
+    letter-spacing: 2px;
+}
 
 /* MESSAGE */
 #msg {
-    margin-top: 18px;
-    min-height: 20px;
+    margin-top: 14px;
+    min-height: 18px;
     font-size: 14px;
+}
+
+/* HIDE */
+.hidden {
+    display: none;
 }
 
 /* MOBILE */
 @media (max-width: 420px) {
     .card {
         width: 92%;
+        padding: 22px;
     }
 }
 </style>
@@ -123,7 +143,6 @@ button:hover {
     <p id="msg"></p>
 </div>
 
-<!-- SCRIPT -->
 <script>
 const API_URL =
   window.location.hostname === "localhost"
@@ -132,7 +151,7 @@ const API_URL =
 
 let tempVToken = "";
 
-/* ================= SEND OTP ================= */
+/* SEND OTP */
 async function handleSendOTP() {
     const email = document.getElementById("email").value.trim();
     const msg = document.getElementById("msg");
@@ -161,19 +180,20 @@ async function handleSendOTP() {
             document.getElementById("emailSection").classList.add("hidden");
             document.getElementById("otpSection").classList.remove("hidden");
 
-            msg.innerText = "✅ OTP sent successfully!";
+            msg.innerText = "✅ OTP sent!";
             msg.style.color = "green";
         } else {
             msg.innerText = "❌ " + data.message;
             msg.style.color = "red";
         }
+
     } catch (err) {
         msg.innerText = "❌ Server error";
         msg.style.color = "red";
     }
 }
 
-/* ================= VERIFY OTP ================= */
+/* VERIFY OTP */
 window.handleVerifyOTP = async function () {
     const otp = document.getElementById("otp").value.trim();
     const msg = document.getElementById("msg");
@@ -213,6 +233,7 @@ window.handleVerifyOTP = async function () {
             msg.innerText = "❌ " + data.message;
             msg.style.color = "red";
         }
+
     } catch (err) {
         msg.innerText = "❌ Server error";
         msg.style.color = "red";
