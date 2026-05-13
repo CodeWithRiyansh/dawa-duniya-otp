@@ -117,7 +117,7 @@ const emailRegex =
 const blockedDomains = [
 
   "tempmail.com",
-  "ditorek376@gcervera.com"
+  "ditorek376@gcervera.com",
   "10minutemail.com",
   "guerrillamail.com",
   "mailinator.com",
