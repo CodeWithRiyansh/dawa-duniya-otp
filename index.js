@@ -27,7 +27,7 @@ const {
 } = process.env;
 
 // ======================================================
-// BASIC ENV CHECK
+// ENV CHECK
 // ======================================================
 
 if (
@@ -36,7 +36,9 @@ if (
   !EMAIL_PASS ||
   !BASE_URL
 ) {
+
   console.log("❌ Missing ENV variables");
+
   process.exit(1);
 }
 
@@ -46,7 +48,7 @@ if (
 
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy:false
   })
 );
 
@@ -56,8 +58,8 @@ app.use(
 
 app.use(
   cors({
-    origin: true,
-    credentials: true
+    origin:true,
+    credentials:true
   })
 );
 
@@ -66,12 +68,14 @@ app.use(
 // ======================================================
 
 app.use(express.json({ limit:"10kb" }));
+
 app.use(cookieParser());
+
 app.use(morgan("dev"));
 
 app.use(
   express.static(
-    path.join(__dirname, "public")
+    path.join(__dirname,"public")
   )
 );
 
@@ -81,17 +85,18 @@ app.use(
 
 const otpLimiter = rateLimit({
 
-  windowMs: 5 * 60 * 1000,
+  windowMs:5 * 60 * 1000,
 
-  max: 10,
+  max:10,
 
-  message: {
+  message:{
     success:false,
     message:"Too many requests"
   }
 });
 
 app.use("/send-otp", otpLimiter);
+
 app.use("/send-link", otpLimiter);
 
 // ======================================================
@@ -99,6 +104,7 @@ app.use("/send-link", otpLimiter);
 // ======================================================
 
 const otpCooldown = new Map();
+
 const verifyAttempts = new Map();
 
 const emailRegex =
@@ -125,7 +131,12 @@ const blockedDomains = [
   "moakt.com",
   "getnada.com",
   "emailondeck.com",
-  "throwawaymail.com"
+  "throwawaymail.com",
+  "mailnesia.com",
+  "mintemail.com",
+  "spamgourmet.com",
+  "tempail.com",
+  "fake-mail.net"
 
 ];
 
@@ -156,68 +167,73 @@ async function validateRealEmail(email) {
     // ABSTRACT API VALIDATION
     // =========================================
 
-    if (ABSTRACT_API_KEY) {
+    const response = await axios.get(
+      `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${email}`
+    );
 
-      const response = await axios.get(
-        `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${email}`
-      );
+    const data = response.data;
 
-      const data = response.data;
+    console.log("EMAIL VALIDATION:", data);
 
-      console.log(
-        "EMAIL VALIDATION:",
-        data
-      );
+    // =========================================
+    // DISPOSABLE EMAIL
+    // =========================================
 
-      // =========================================
-      // TEMP EMAIL CHECK
-      // =========================================
+    if (
+      data.is_disposable_email?.value === true
+    ) {
 
-      if (
-        data.is_disposable_email &&
-        data.is_disposable_email.value === true
-      ) {
-
-        return {
-          valid:false,
-          message:"Temporary email not allowed"
-        };
-      }
-
-      // =========================================
-      // FORMAT CHECK
-      // =========================================
-
-      if (
-        data.is_valid_format &&
-        data.is_valid_format.value === false
-      ) {
-
-        return {
-          valid:false,
-          message:"Invalid email format"
-        };
-      }
-
-      // =========================================
-      // MX CHECK
-      // =========================================
-
-      if (
-        data.is_mx_found &&
-        data.is_mx_found.value === false
-      ) {
-
-        return {
-          valid:false,
-          message:"Email domain invalid"
-        };
-      }
-
-      // IMPORTANT:
-      // SMTP VALIDATION REMOVE KAR DIYA
-      // KYUKI COMPANY EMAILS FAIL KAR DETI HAI
+      return {
+        valid:false,
+        message:"Temporary email not allowed"
+      };
     }
+
+    // =========================================
+    // INVALID FORMAT
+    // =========================================
+
+    if (
+      data.is_valid_format?.value === false
+    ) {
+
+      return {
+        valid:false,
+        message:"Invalid email format"
+      };
+    }
+
+    // =========================================
+    // INVALID DOMAIN
+    // =========================================
+
+    if (
+      data.is_mx_found?.value === false
+    ) {
+
+      return {
+        valid:false,
+        message:"Email domain invalid"
+      };
+    }
+
+    // =========================================
+    // BLOCK ONLY CLEARLY BAD EMAILS
+    // =========================================
+
+    if (
+      data.deliverability === "UNDELIVERABLE"
+    ) {
+
+      return {
+        valid:false,
+        message:"Email inbox does not exist"
+      };
+    }
+
+    // =========================================
+    // ALLOW REAL + COMPANY EMAILS
+    // =========================================
 
     return {
       valid:true
@@ -230,8 +246,11 @@ async function validateRealEmail(email) {
       err.message
     );
 
+    // =========================================
     // FAIL OPEN
-    // REAL USERS BLOCK NA HO
+    // DON'T BLOCK REAL USERS
+    // =========================================
+
     return {
       valid:true
     };
@@ -283,7 +302,7 @@ app.get("/health", (req,res)=>{
 
 app.post("/send-otp", async (req,res)=>{
 
-  try{
+  try {
 
     const { email } = req.body;
 
@@ -291,10 +310,10 @@ app.post("/send-otp", async (req,res)=>{
     // EMAIL CHECK
     // =========================================
 
-    if(
+    if (
       !email ||
       !emailRegex.test(email)
-    ){
+    ) {
 
       return res.status(400).json({
         success:false,
@@ -309,10 +328,10 @@ app.post("/send-otp", async (req,res)=>{
     const lastRequest =
       otpCooldown.get(email);
 
-    if(
+    if (
       lastRequest &&
       Date.now() - lastRequest < 60000
-    ){
+    ) {
 
       return res.status(429).json({
         success:false,
@@ -332,7 +351,7 @@ app.post("/send-otp", async (req,res)=>{
     const validation =
       await validateRealEmail(email);
 
-    if(!validation.valid){
+    if (!validation.valid) {
 
       return res.status(400).json({
         success:false,
@@ -354,7 +373,7 @@ app.post("/send-otp", async (req,res)=>{
       await bcrypt.hash(otp,10);
 
     // =========================================
-    // JWT TOKEN
+    // TOKEN
     // =========================================
 
     const vToken = jwt.sign(
@@ -372,7 +391,7 @@ app.post("/send-otp", async (req,res)=>{
     );
 
     // =========================================
-    // SEND MAIL
+    // SEND EMAIL
     // =========================================
 
     await transporter.sendMail({
@@ -414,7 +433,7 @@ app.post("/send-otp", async (req,res)=>{
       vToken
     });
 
-  }catch(err){
+  } catch (err) {
 
     console.log(
       "SEND OTP ERROR:",
@@ -434,17 +453,17 @@ app.post("/send-otp", async (req,res)=>{
 
 app.post("/verify-otp", async (req,res)=>{
 
-  try{
+  try {
 
     const {
       userOtp,
       vToken
     } = req.body;
 
-    if(
+    if (
       !userOtp ||
       !vToken
-    ){
+    ) {
 
       return res.status(400).json({
         success:false,
@@ -453,13 +472,13 @@ app.post("/verify-otp", async (req,res)=>{
     }
 
     // =========================================
-    // VERIFY ATTEMPTS
+    // ATTEMPTS
     // =========================================
 
     const attempts =
       verifyAttempts.get(vToken) || 0;
 
-    if(attempts >= 5){
+    if (attempts >= 5) {
 
       return res.status(429).json({
         success:false,
@@ -473,14 +492,14 @@ app.post("/verify-otp", async (req,res)=>{
 
     let decoded;
 
-    try{
+    try {
 
       decoded = jwt.verify(
         vToken,
         JWT_SECRET
       );
 
-    }catch{
+    } catch {
 
       return res.status(400).json({
         success:false,
@@ -489,7 +508,7 @@ app.post("/verify-otp", async (req,res)=>{
     }
 
     // =========================================
-    // MATCH OTP
+    // VERIFY OTP
     // =========================================
 
     const match =
@@ -498,7 +517,7 @@ app.post("/verify-otp", async (req,res)=>{
         decoded.otp
       );
 
-    if(!match){
+    if (!match) {
 
       verifyAttempts.set(
         vToken,
@@ -548,7 +567,7 @@ app.post("/verify-otp", async (req,res)=>{
       token:loginToken
     });
 
-  }catch(err){
+  } catch (err) {
 
     console.log(
       "VERIFY OTP ERROR:",
@@ -568,11 +587,11 @@ app.post("/verify-otp", async (req,res)=>{
 
 app.post("/send-link", async (req,res)=>{
 
-  try{
+  try {
 
     const { email } = req.body;
 
-    if(!email){
+    if (!email) {
 
       return res.status(400).json({
         success:false,
@@ -587,7 +606,7 @@ app.post("/send-link", async (req,res)=>{
     const validation =
       await validateRealEmail(email);
 
-    if(!validation.valid){
+    if (!validation.valid) {
 
       return res.status(400).json({
         success:false,
@@ -596,7 +615,7 @@ app.post("/send-link", async (req,res)=>{
     }
 
     // =========================================
-    // GENERATE TOKEN
+    // TOKEN
     // =========================================
 
     const token = jwt.sign(
@@ -618,7 +637,7 @@ app.post("/send-link", async (req,res)=>{
 `${BASE_URL}/verify-email?token=${token}`;
 
     // =========================================
-    // SEND MAIL
+    // SEND EMAIL
     // =========================================
 
     await transporter.sendMail({
@@ -641,7 +660,7 @@ app.post("/send-link", async (req,res)=>{
         </h2>
 
         <p>
-          Click button below
+          Click below to verify email
         </p>
 
         <a
@@ -667,7 +686,7 @@ app.post("/send-link", async (req,res)=>{
       success:true
     });
 
-  }catch(err){
+  } catch (err) {
 
     console.log(
       "SEND LINK ERROR:",
@@ -687,11 +706,11 @@ app.post("/send-link", async (req,res)=>{
 
 app.get("/verify-email", (req,res)=>{
 
-  try{
+  try {
 
     const { token } = req.query;
 
-    if(!token){
+    if (!token) {
 
       return res.send(`
         <h2>
@@ -749,7 +768,7 @@ app.get("/verify-email", (req,res)=>{
       `${BASE_URL}/dashboard.html`
     );
 
-  }catch(err){
+  } catch (err) {
 
     console.log(
       "VERIFY LINK ERROR:",
