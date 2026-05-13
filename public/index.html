@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
+<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Dawa Duniya Auth</title>
+<title>Dawa Duniya | OTP Login</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet"/>
 
@@ -11,45 +11,33 @@
 body{
     margin:0;
     font-family:Poppins;
-    min-height:100vh;
+    height:100vh;
     display:flex;
     justify-content:center;
     align-items:center;
-    background: linear-gradient(135deg,#0f172a,#1e293b);
+    background: linear-gradient(135deg,#0f172a,#111827);
 }
 
-/* GLASS CARD */
+/* CARD */
 .card{
     width:380px;
     padding:28px;
-    border-radius:20px;
+    border-radius:18px;
     background:rgba(255,255,255,0.08);
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(18px);
     border:1px solid rgba(255,255,255,0.15);
     text-align:center;
     color:white;
-    box-shadow:0 20px 60px rgba(0,0,0,0.4);
-}
-
-h2{
-    margin:0;
-    color:#00ffcc;
-}
-
-.subtitle{
-    font-size:12px;
-    opacity:0.8;
-    margin-bottom:15px;
 }
 
 /* INPUT */
 input{
     width:100%;
     padding:12px;
-    border-radius:10px;
+    margin:10px 0;
     border:none;
+    border-radius:10px;
     outline:none;
-    margin:8px 0;
 }
 
 /* BUTTON */
@@ -63,6 +51,10 @@ button{
     transition:0.2s;
 }
 
+button:hover{
+    transform:scale(1.02);
+}
+
 .primary{
     background:#00ffcc;
     color:#000;
@@ -73,11 +65,7 @@ button{
     color:#fff;
 }
 
-button:hover{
-    transform:scale(1.03);
-}
-
-/* OTP BOXES */
+/* OTP BOX */
 .otp-container{
     display:flex;
     justify-content:space-between;
@@ -97,18 +85,17 @@ button:hover{
 }
 
 .otp-box:focus{
-    transform:scale(1.1);
-    box-shadow:0 0 10px #00ffcc;
+    transform:scale(1.2);
+    box-shadow:0 0 12px #00ffcc;
 }
 
-/* SHAKE ANIMATION */
+/* SHAKE */
 @keyframes shake{
     0%,100%{transform:translateX(0)}
     25%{transform:translateX(-5px)}
     50%{transform:translateX(5px)}
     75%{transform:translateX(-5px)}
 }
-
 .shake{
     animation:shake 0.3s;
 }
@@ -116,8 +103,26 @@ button:hover{
 /* TIMER */
 .timer{
     font-size:12px;
-    margin-top:8px;
+    margin:10px 0;
     opacity:0.8;
+}
+
+/* TOAST */
+#toast{
+    position:fixed;
+    bottom:30px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#111;
+    padding:10px 18px;
+    border-radius:10px;
+    opacity:0;
+    transition:0.3s;
+    color:white;
+}
+.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(-10px);
 }
 
 .hidden{display:none;}
@@ -129,38 +134,39 @@ button:hover{
 <div class="card">
 
 <h2>Dawa Duniya</h2>
-<div class="subtitle">Aapki sehat ka sathi ❤️</div>
+<p style="font-size:12px;opacity:0.8">Aapki sehat ka sathi ❤️</p>
 
 <!-- EMAIL -->
 <div id="emailSection">
     <input id="email" type="email" placeholder="Enter Email"/>
-    <button class="primary" onclick="handleSendOTP()">Send OTP</button>
+    <button class="primary" onclick="sendOTP()">Send OTP</button>
 </div>
 
 <!-- OTP -->
 <div id="otpSection" class="hidden">
 
     <div class="otp-container">
-        <input class="otp-box" maxlength="1"/>
-        <input class="otp-box" maxlength="1"/>
-        <input class="otp-box" maxlength="1"/>
-        <input class="otp-box" maxlength="1"/>
-        <input class="otp-box" maxlength="1"/>
-        <input class="otp-box" maxlength="1"/>
+        <input class="otp-box" maxlength="1">
+        <input class="otp-box" maxlength="1">
+        <input class="otp-box" maxlength="1">
+        <input class="otp-box" maxlength="1">
+        <input class="otp-box" maxlength="1">
+        <input class="otp-box" maxlength="1">
     </div>
 
-    <button class="secondary" onclick="handleVerifyOTP()">Verify OTP</button>
+    <button class="secondary" onclick="verifyOTP()">Verify OTP</button>
 
-    <div class="timer" id="timerText"></div>
+    <div class="timer" id="timer"></div>
 
-    <button id="resendBtn" class="primary" onclick="handleResend()" disabled>
+    <button id="resendBtn" class="primary" onclick="resendOTP()" disabled>
         Resend OTP
     </button>
-</div>
-
-<p id="msg"></p>
 
 </div>
+
+</div>
+
+<div id="toast"></div>
 
 <script>
 const API = window.location.hostname==="localhost"
@@ -169,15 +175,24 @@ const API = window.location.hostname==="localhost"
 
 let tempVToken="";
 let countdown=60;
-let timerInterval=null;
+let interval;
+
+/* TOAST */
+function toast(msg){
+    const t=document.getElementById("toast");
+    t.innerText=msg;
+    t.classList.add("show");
+    setTimeout(()=>t.classList.remove("show"),1500);
+}
 
 /* SEND OTP */
-async function handleSendOTP(){
+async function sendOTP(){
     const email=document.getElementById("email").value;
-    const msg=document.getElementById("msg");
 
-    msg.innerText="Sending OTP...";
-    msg.style.color="white";
+    if(!email){
+        toast("Enter email");
+        return;
+    }
 
     const res=await fetch(`${API}/send-otp`,{
         method:"POST",
@@ -189,56 +204,51 @@ async function handleSendOTP(){
 
     if(data.success){
         tempVToken=data.vToken;
-
-        document.getElementById("emailSection").classList.add("hidden");
-        document.getElementById("otpSection").classList.remove("hidden");
-
+        document.getElementById("emailSection").style.display="none";
+        document.getElementById("otpSection").style.display="block";
         startTimer();
-
+        toast("OTP sent");
     }else{
-        msg.innerText=data.message;
-        msg.style.color="red";
+        toast(data.message);
     }
 }
 
 /* TIMER */
 function startTimer(){
     const btn=document.getElementById("resendBtn");
-    const text=document.getElementById("timerText");
+    const t=document.getElementById("timer");
 
     countdown=60;
     btn.disabled=true;
 
-    timerInterval=setInterval(()=>{
-        text.innerText=`Resend OTP in ${countdown}s`;
+    interval=setInterval(()=>{
+        t.innerText=`Resend in ${countdown}s`;
         countdown--;
 
         if(countdown<0){
-            clearInterval(timerInterval);
+            clearInterval(interval);
             btn.disabled=false;
-            text.innerText="You can resend OTP now";
+            t.innerText="You can resend OTP";
         }
     },1000);
 }
 
 /* RESEND */
-function handleResend(){
-    handleSendOTP();
+function resendOTP(){
+    sendOTP();
 }
 
 /* VERIFY OTP */
-async function handleVerifyOTP(){
+async function verifyOTP(){
 
     const inputs=document.querySelectorAll(".otp-box");
-    const msg=document.getElementById("msg");
-
     let otp="";
+
     inputs.forEach(i=>otp+=i.value);
 
     if(otp.length!==6){
-        triggerShake();
-        msg.innerText="Enter valid OTP";
-        msg.style.color="red";
+        shake();
+        toast("Invalid OTP");
         return;
     }
 
@@ -255,28 +265,26 @@ async function handleVerifyOTP(){
 
     if(data.success){
         localStorage.setItem("dawaToken",data.token);
-        msg.innerText="Login Successful";
+        toast("Login success");
 
         setTimeout(()=>{
             window.location.href="dashboard.html";
         },800);
-
     }else{
-        triggerShake();
-        msg.innerText="Wrong OTP";
-        msg.style.color="red";
+        shake();
+        toast("Wrong OTP");
     }
 }
 
 /* SHAKE */
-function triggerShake(){
+function shake(){
     document.querySelector(".otp-container").classList.add("shake");
     setTimeout(()=>{
         document.querySelector(".otp-container").classList.remove("shake");
     },300);
 }
 
-/* OTP AUTO MOVE + PASTE */
+/* OTP AUTO MOVE */
 document.addEventListener("DOMContentLoaded",()=>{
     const inputs=document.querySelectorAll(".otp-box");
 
