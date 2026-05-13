@@ -1,279 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Dawa Duniya | Login</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-
-<style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:'Poppins', sans-serif;
-}
-
-body{
-    height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background: linear-gradient(135deg,#0f172a,#1e293b,#0f172a);
-    overflow:hidden;
-}
-
-/* ANIMATED BACKGROUND GLOW */
-body::before,
-body::after{
-    content:"";
-    position:absolute;
-    width:500px;
-    height:500px;
-    filter:blur(120px);
-    opacity:0.35;
-    animation: floatGlow 8s ease-in-out infinite;
-}
-
-body::before{
-    background:#00ffcc;
-    top:-150px;
-    left:-150px;
-}
-
-body::after{
-    background:#3b82f6;
-    bottom:-150px;
-    right:-150px;
-    animation-delay:3s;
-}
-
-@keyframes floatGlow{
-    0%,100%{ transform: translateY(0px) scale(1); }
-    50%{ transform: translateY(30px) scale(1.1); }
-}
-
-/* CARD */
-.wrapper{
-    width:100%;
-    max-width:430px; /* ⬅️ BIGGER FORM */
-    padding:40px 35px;
-    border-radius:22px;
-    background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(18px);
-    border:1px solid rgba(255,255,255,0.12);
-    box-shadow:0 25px 60px rgba(0,0,0,0.5);
-
-    text-align:center;
-
-    /* ENTRY ANIMATION */
-    animation: slideIn 0.8s ease;
-}
-
-@keyframes slideIn{
-    from{
-        opacity:0;
-        transform: translateY(30px) scale(0.95);
+  <meta charset="UTF-8" />
+  <title>Dawa Duniya Auth</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    to{
-        opacity:1;
-        transform: translateY(0) scale(1);
+
+    .box {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 10px;
+      width: 320px;
     }
-}
 
-/* LOGO */
-.logo{
-    font-size:30px;
-    font-weight:600;
-    color:#00ffcc;
-    letter-spacing:0.5px;
-}
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: none;
+    }
 
-.tagline{
-    font-size:13px;
-    color:#cbd5e1;
-    margin-bottom:30px;
-}
+    button {
+      cursor: pointer;
+      background: #22c55e;
+      color: white;
+    }
 
-/* INPUT */
-input{
-    width:100%;
-    padding:15px;
-    margin:12px 0;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.05);
-    color:white;
-    outline:none;
-    transition:0.25s;
-}
+    .tabs {
+      display: flex;
+      margin-bottom: 10px;
+    }
 
-/* INPUT ANIMATION */
-input:focus{
-    border-color:#00ffcc;
-    box-shadow:0 0 18px rgba(0,255,204,0.25);
-    transform: scale(1.02);
-}
+    .tab {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      cursor: pointer;
+      background: #334155;
+    }
 
-/* BUTTON */
-button{
-    width:100%;
-    padding:15px;
-    margin-top:12px;
-    border:none;
-    border-radius:14px;
-    font-weight:600;
-    cursor:pointer;
-    transition:0.3s;
-    position:relative;
-    overflow:hidden;
-}
+    .active {
+      background: #22c55e;
+    }
 
-/* BUTTON HOVER GLOW */
-button::after{
-    content:"";
-    position:absolute;
-    top:0;
-    left:-100%;
-    width:100%;
-    height:100%;
-    background: rgba(255,255,255,0.2);
-    transform: skewX(-20deg);
-    transition:0.5s;
-}
-
-button:hover::after{
-    left:120%;
-}
-
-button:hover{
-    transform:translateY(-2px);
-}
-
-.primary{
-    background: linear-gradient(135deg,#00ffcc,#00a884);
-    color:#000;
-}
-
-.secondary{
-    background: linear-gradient(135deg,#3b82f6,#2563eb);
-    color:#fff;
-}
-
-/* MESSAGE */
-#msg{
-    margin-top:18px;
-    font-size:13px;
-    color:#e2e8f0;
-    min-height:20px;
-}
-
-/* HIDDEN */
-.hidden{display:none;}
-</style>
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
-
 <body>
 
-<div class="wrapper">
+<div class="box">
 
-    <div class="logo">Dawa Duniya</div>
-    <div class="tagline">Aapki sehat ka sathi ❤️</div>
+  <div class="tabs">
+    <div class="tab active" onclick="setMode('otp')">OTP Login</div>
+    <div class="tab" onclick="setMode('link')">Email Link</div>
+  </div>
 
-    <!-- EMAIL -->
-    <div id="emailSection">
-        <input type="email" id="email" placeholder="Enter your email"/>
-        <button class="primary" id="sendBtn">Send OTP</button>
-    </div>
+  <!-- EMAIL -->
+  <input id="email" placeholder="Enter email" />
 
-    <!-- OTP -->
-    <div id="otpSection" class="hidden">
-        <input type="text" id="otp" placeholder="Enter OTP"/>
-        <button class="secondary" id="verifyBtn">Verify & Login</button>
-    </div>
+  <!-- OTP SECTION -->
+  <div id="otpBox">
+    <button onclick="sendOTP()">Send OTP</button>
+    <input id="otp" placeholder="Enter OTP" />
+    <button onclick="verifyOTP()">Verify OTP</button>
+  </div>
 
-    <div id="msg"></div>
+  <!-- LINK SECTION -->
+  <div id="linkBox" class="hidden">
+    <button onclick="sendLink()">Send Verification Link</button>
+    <p style="font-size:12px;color:#94a3b8;">
+      Check your email inbox and click link
+    </p>
+  </div>
 
+  <p id="msg"></p>
 </div>
 
 <script>
-const API_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:3000"
-    : "https://dawa-duniya-otp.vercel.app";
+let mode = "otp";
 
-let tempVToken = "";
+function setMode(m) {
+  mode = m;
 
-// SEND OTP
-async function handleSendOTP(){
-    const email = document.getElementById("email").value.trim();
-    const msg = document.getElementById("msg");
+  document.getElementById("otpBox").classList.toggle("hidden", m !== "otp");
+  document.getElementById("linkBox").classList.toggle("hidden", m !== "link");
 
-    if(!email){
-        msg.innerText="Enter email";
-        msg.style.color="#ff6b6b";
-        return;
-    }
-
-    msg.innerText="Sending OTP...";
-    msg.style.color="#00ffcc";
-
-    const res = await fetch(`${API_URL}/send-otp`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email})
-    });
-
-    const data = await res.json();
-
-    if(data.success){
-        tempVToken = data.vToken;
-        document.getElementById("emailSection").classList.add("hidden");
-        document.getElementById("otpSection").classList.remove("hidden");
-        msg.innerText="OTP sent successfully";
-        msg.style.color="#00ffcc";
-    }else{
-        msg.innerText=data.message;
-        msg.style.color="#ff6b6b";
-    }
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  event.target.classList.add("active");
 }
 
-// VERIFY OTP
-async function handleVerifyOTP(){
-    const otp = document.getElementById("otp").value.trim();
-    const msg = document.getElementById("msg");
+async function sendOTP() {
+  const email = document.getElementById("email").value;
 
-    msg.innerText="Verifying...";
-    msg.style.color="#60a5fa";
+  const res = await fetch("/send-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
 
-    const res = await fetch(`${API_URL}/verify-otp`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            userOtp:otp,
-            vToken:tempVToken
-        })
-    });
+  const data = await res.json();
 
-    const data = await res.json();
-
-    if(data.success){
-        localStorage.setItem("dawaToken",data.token);
-        msg.innerText="Login Successful";
-
-        setTimeout(()=>{
-            window.location.href="dashboard.html";
-        },800);
-
-    }else{
-        msg.innerText=data.message;
-        msg.style.color="#ff6b6b";
-    }
+  document.getElementById("msg").innerText =
+    data.success ? "OTP sent 🚀" : data.message;
 }
 
-document.getElementById("sendBtn").addEventListener("click",handleSendOTP);
-document.getElementById("verifyBtn").addEventListener("click",handleVerifyOTP);
+async function verifyOTP() {
+  const otp = document.getElementById("otp").value;
+  const vToken = window.vToken; // store later
+
+  const res = await fetch("/verify-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userOtp: otp,
+      vToken
+    })
+  });
+
+  const data = await res.json();
+
+  document.getElementById("msg").innerText =
+    data.success ? "Login success 🚀" : data.message;
+}
+
+async function sendLink() {
+  const email = document.getElementById("email").value;
+
+  const res = await fetch("/send-link", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+
+  const data = await res.json();
+
+  document.getElementById("msg").innerText =
+    data.success ? "Link sent 🚀" : "Error sending link";
+}
 </script>
 
 </body>
