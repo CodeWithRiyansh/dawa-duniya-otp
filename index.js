@@ -275,12 +275,11 @@ app.post("/verify-otp", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.cookie("dawaToken", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 3600000,
-    });
+   res.cookie("dawaToken", login, {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+});
 
     trustScore.set(decoded.email, (trustScore.get(decoded.email) || 0) + 1);
 
@@ -349,7 +348,7 @@ app.get("/verify-email", (req, res) => {
       maxAge: 3600000,
     });
 
-    return res.send("Email verified 🚀");
+    return res.redirect("https://dawa-duniya-otp.vercel.app/dashboard.html");
   } catch {
     return res.status(400).send("Invalid link");
   }

@@ -8,7 +8,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 
 <style>
-/* (YOUR CSS SAME — NO CHANGE) */
 *{
     margin:0;
     padding:0;
@@ -17,15 +16,16 @@
 }
 
 body{
-    height:100vh;
+    min-height:100vh;
     display:flex;
     justify-content:center;
     align-items:center;
     background: linear-gradient(135deg,#0f172a,#1e293b,#0f172a);
     overflow:hidden;
+    padding:20px;
 }
 
-/* glow */
+/* GLOW */
 body::before,
 body::after{
     content:"";
@@ -37,14 +37,29 @@ body::after{
     animation: floatGlow 8s ease-in-out infinite;
 }
 
-body::before{background:#00ffcc; top:-150px; left:-150px;}
-body::after{background:#3b82f6; bottom:-150px; right:-150px; animation-delay:3s;}
-
-@keyframes floatGlow{
-    0%,100%{ transform: translateY(0px) scale(1); }
-    50%{ transform: translateY(30px) scale(1.1); }
+body::before{
+    background:#00ffcc;
+    top:-150px;
+    left:-150px;
 }
 
+body::after{
+    background:#3b82f6;
+    bottom:-150px;
+    right:-150px;
+    animation-delay:3s;
+}
+
+@keyframes floatGlow{
+    0%,100%{
+        transform: translateY(0px) scale(1);
+    }
+    50%{
+        transform: translateY(30px) scale(1.1);
+    }
+}
+
+/* CARD */
 .wrapper{
     width:100%;
     max-width:430px;
@@ -55,11 +70,24 @@ body::after{background:#3b82f6; bottom:-150px; right:-150px; animation-delay:3s;
     border:1px solid rgba(255,255,255,0.12);
     box-shadow:0 25px 60px rgba(0,0,0,0.5);
     text-align:center;
+    position:relative;
+    z-index:10;
 }
 
-.logo{font-size:30px;font-weight:600;color:#00ffcc;}
-.tagline{font-size:13px;color:#cbd5e1;margin-bottom:25px;}
+/* TEXT */
+.logo{
+    font-size:30px;
+    font-weight:600;
+    color:#00ffcc;
+}
 
+.tagline{
+    font-size:13px;
+    color:#cbd5e1;
+    margin-bottom:25px;
+}
+
+/* INPUT */
 input{
     width:100%;
     padding:15px;
@@ -68,8 +96,17 @@ input{
     border:1px solid rgba(255,255,255,0.15);
     background: rgba(255,255,255,0.05);
     color:white;
+    outline:none;
+    transition:0.3s;
+    font-size:15px;
 }
 
+input:focus{
+    border-color:#00ffcc;
+    box-shadow:0 0 12px rgba(0,255,204,0.3);
+}
+
+/* BUTTON */
 button{
     width:100%;
     padding:15px;
@@ -78,11 +115,30 @@ button{
     border-radius:14px;
     font-weight:600;
     cursor:pointer;
+    transition:0.3s;
+    font-size:15px;
 }
 
-.primary{background:linear-gradient(135deg,#00ffcc,#00a884);color:#000;}
-.secondary{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;}
+button:hover{
+    transform:translateY(-2px);
+}
 
+button:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+}
+
+.primary{
+    background:linear-gradient(135deg,#00ffcc,#00a884);
+    color:#000;
+}
+
+.secondary{
+    background:linear-gradient(135deg,#3b82f6,#2563eb);
+    color:#fff;
+}
+
+/* TABS */
 .tabs{
     display:flex;
     margin-bottom:15px;
@@ -92,21 +148,54 @@ button{
 
 .tab{
     flex:1;
-    padding:10px;
+    padding:12px;
     cursor:pointer;
     background:#1e293b;
     color:white;
     font-size:13px;
+    transition:0.3s;
 }
 
 .tab.active{
     background:#00ffcc;
     color:#000;
+    font-weight:600;
 }
 
-.hidden{display:none;}
+.hidden{
+    display:none;
+}
 
-#msg{margin-top:15px;font-size:13px;color:#e2e8f0;}
+#msg{
+    margin-top:18px;
+    font-size:13px;
+    min-height:20px;
+    color:#e2e8f0;
+    word-break:break-word;
+}
+
+.divider{
+    margin:20px 0;
+    border:none;
+    border-top:1px solid rgba(255,255,255,0.1);
+}
+
+/* MOBILE */
+@media(max-width:480px){
+
+    .wrapper{
+        padding:30px 22px;
+    }
+
+    .logo{
+        font-size:26px;
+    }
+
+    input,
+    button{
+        padding:14px;
+    }
+}
 </style>
 </head>
 
@@ -117,122 +206,370 @@ button{
     <div class="logo">Dawa Duniya</div>
     <div class="tagline">Aapki sehat ka sathi ❤️</div>
 
-    <!-- MODE SWITCH -->
+    <!-- TABS -->
     <div class="tabs">
         <div class="tab active" id="otpTab">OTP Login</div>
         <div class="tab" id="linkTab">Email Link</div>
     </div>
 
     <!-- EMAIL -->
-    <input type="email" id="email" placeholder="Enter your email"/>
+    <input
+        type="email"
+        id="email"
+        placeholder="Enter your email"
+        autocomplete="email"
+    />
 
-    <!-- OTP SECTION -->
+    <!-- OTP BOX -->
     <div id="otpBox">
-        <button class="primary" id="sendOtpBtn">Send OTP</button>
-        <input type="text" id="otp" placeholder="Enter OTP"/>
-        <button class="secondary" id="verifyBtn">Verify OTP</button>
+
+        <button class="primary" id="sendOtpBtn">
+            Send OTP
+        </button>
+
+        <input
+            type="text"
+            id="otp"
+            placeholder="Enter OTP"
+            maxlength="6"
+            inputmode="numeric"
+        />
+
+        <button class="secondary" id="verifyBtn">
+            Verify OTP
+        </button>
+
     </div>
 
-    <!-- LINK SECTION -->
+    <!-- LINK BOX -->
     <div id="linkBox" class="hidden">
-        <button class="primary" id="sendLinkBtn">Send Verification Link</button>
-        <p style="font-size:12px;color:#94a3b8;margin-top:10px;">
-            Check your email and click the link
+
+        <button class="primary" id="sendLinkBtn">
+            Send Verification Link
+        </button>
+
+        <p style="font-size:12px;color:#94a3b8;margin-top:12px;">
+            Check your email inbox and click the verification link
         </p>
+
     </div>
 
     <div id="msg"></div>
+
 </div>
 
 <script>
-const API_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:3000"
-    : "https://dawa-duniya-otp.vercel.app";
 
-let mode = "otp";
+const API_URL = "https://dawa-duniya-otp.vercel.app";
+
 let tempVToken = "";
+let mode = "otp";
 
-// SWITCH MODE
-document.getElementById("otpTab").onclick = () => {
+// ===============================
+// DOM READY FIX (IMPORTANT)
+// ===============================
+window.addEventListener("DOMContentLoaded", () => {
+
+    document
+        .getElementById("otpTab")
+        .addEventListener("click", switchToOTP);
+
+    document
+        .getElementById("linkTab")
+        .addEventListener("click", switchToLink);
+
+    document
+        .getElementById("sendOtpBtn")
+        .addEventListener("click", handleSendOTP);
+
+    document
+        .getElementById("verifyBtn")
+        .addEventListener("click", handleVerifyOTP);
+
+    document
+        .getElementById("sendLinkBtn")
+        .addEventListener("click", handleSendLink);
+
+});
+
+// ===============================
+// HELPERS
+// ===============================
+function setMessage(text, color="#e2e8f0"){
+    const msg = document.getElementById("msg");
+    msg.innerText = text;
+    msg.style.color = color;
+}
+
+function disableButton(id, state){
+    document.getElementById(id).disabled = state;
+}
+
+// ===============================
+// SWITCH TO OTP
+// ===============================
+function switchToOTP(){
+
     mode = "otp";
-    document.getElementById("otpBox").classList.remove("hidden");
-    document.getElementById("linkBox").classList.add("hidden");
-    document.getElementById("otpTab").classList.add("active");
-    document.getElementById("linkTab").classList.remove("active");
-};
 
-document.getElementById("linkTab").onclick = () => {
+    document
+        .getElementById("otpBox")
+        .classList.remove("hidden");
+
+    document
+        .getElementById("linkBox")
+        .classList.add("hidden");
+
+    document
+        .getElementById("otpTab")
+        .classList.add("active");
+
+    document
+        .getElementById("linkTab")
+        .classList.remove("active");
+}
+
+// ===============================
+// SWITCH TO LINK
+// ===============================
+function switchToLink(){
+
     mode = "link";
-    document.getElementById("otpBox").classList.add("hidden");
-    document.getElementById("linkBox").classList.remove("hidden");
-    document.getElementById("linkTab").classList.add("active");
-    document.getElementById("otpTab").classList.remove("active");
-};
 
+    document
+        .getElementById("otpBox")
+        .classList.add("hidden");
+
+    document
+        .getElementById("linkBox")
+        .classList.remove("hidden");
+
+    document
+        .getElementById("linkTab")
+        .classList.add("active");
+
+    document
+        .getElementById("otpTab")
+        .classList.remove("active");
+}
+
+// ===============================
 // SEND OTP
-document.getElementById("sendOtpBtn").onclick = async () => {
-    const email = document.getElementById("email").value;
+// ===============================
+async function handleSendOTP(){
 
-    const res = await fetch(`${API_URL}/send-otp`, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email})
-    });
+    const email = document
+        .getElementById("email")
+        .value
+        .trim();
 
-    const data = await res.json();
-
-    if(data.success){
-        tempVToken = data.vToken;
-        document.getElementById("msg").innerText = "OTP sent 🚀";
-    } else {
-        document.getElementById("msg").innerText = data.message;
+    if(!email){
+        setMessage("Please enter email","#ff6b6b");
+        return;
     }
-};
 
+    try{
+
+        disableButton("sendOtpBtn", true);
+
+        setMessage("Sending OTP...","#00ffcc");
+
+        const res = await fetch(`${API_URL}/send-otp`,{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({ email })
+        });
+
+        const data = await res.json();
+
+        if(data.success){
+
+            tempVToken = data.vToken;
+
+            setMessage(
+                "OTP sent successfully 🚀",
+                "#00ffcc"
+            );
+
+        } else {
+
+            setMessage(
+                data.message || "Failed to send OTP",
+                "#ff6b6b"
+            );
+        }
+
+    } catch(err){
+
+        console.log(err);
+
+        setMessage(
+            "Network error. Try again.",
+            "#ff6b6b"
+        );
+
+    } finally {
+
+        disableButton("sendOtpBtn", false);
+    }
+}
+
+// ===============================
 // VERIFY OTP
-document.getElementById("verifyBtn").onclick = async () => {
-    const otp = document.getElementById("otp").value;
+// ===============================
+async function handleVerifyOTP(){
 
-    const res = await fetch(`${API_URL}/verify-otp`, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            userOtp:otp,
-            vToken:tempVToken
-        })
-    });
+    const otp = document
+        .getElementById("otp")
+        .value
+        .trim();
 
-    const data = await res.json();
-
-    if(data.success){
-        localStorage.setItem("dawaToken", data.token);
-        document.getElementById("msg").innerText = "Login success 🚀";
-
-        setTimeout(()=>{
-            window.location.href="dashboard.html";
-        },800);
-
-    } else {
-        document.getElementById("msg").innerText = data.message;
+    if(!tempVToken){
+        setMessage(
+            "Please request OTP first",
+            "#ff6b6b"
+        );
+        return;
     }
-};
 
+    if(!otp){
+        setMessage(
+            "Enter OTP",
+            "#ff6b6b"
+        );
+        return;
+    }
+
+    try{
+
+        disableButton("verifyBtn", true);
+
+        setMessage(
+            "Verifying OTP...",
+            "#60a5fa"
+        );
+
+        const res = await fetch(`${API_URL}/verify-otp`,{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                userOtp: otp,
+                vToken: tempVToken
+            })
+        });
+
+        const data = await res.json();
+
+        if(data.success){
+
+            localStorage.setItem(
+                "dawaToken",
+                data.token
+            );
+
+            setMessage(
+                "Login successful 🚀",
+                "#00ffcc"
+            );
+
+            setTimeout(()=>{
+                window.location.href = "dashboard.html";
+            },1000);
+
+        } else {
+
+            setMessage(
+                data.message || "OTP verification failed",
+                "#ff6b6b"
+            );
+        }
+
+    } catch(err){
+
+        console.log(err);
+
+        setMessage(
+            "Network error",
+            "#ff6b6b"
+        );
+
+    } finally {
+
+        disableButton("verifyBtn", false);
+    }
+}
+
+// ===============================
 // SEND LINK
-document.getElementById("sendLinkBtn").onclick = async () => {
-    const email = document.getElementById("email").value;
+// ===============================
+async function handleSendLink(){
 
-    const res = await fetch(`${API_URL}/send-link`, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email})
-    });
+    const email = document
+        .getElementById("email")
+        .value
+        .trim();
 
-    const data = await res.json();
+    if(!email){
+        setMessage(
+            "Please enter email",
+            "#ff6b6b"
+        );
+        return;
+    }
 
-    document.getElementById("msg").innerText =
-        data.success ? "Link sent 🚀 check email" : "Error sending link";
-};
+    try{
+
+        disableButton("sendLinkBtn", true);
+
+        setMessage(
+            "Sending verification link...",
+            "#00ffcc"
+        );
+
+        const res = await fetch(`${API_URL}/send-link`,{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({ email })
+        });
+
+        const data = await res.json();
+
+        if(data.success){
+
+            setMessage(
+                "Verification link sent 🚀 Check your email",
+                "#00ffcc"
+            );
+
+        } else {
+
+            setMessage(
+                data.message || "Failed to send link",
+                "#ff6b6b"
+            );
+        }
+
+    } catch(err){
+
+        console.log(err);
+
+        setMessage(
+            "Network error",
+            "#ff6b6b"
+        );
+
+    } finally {
+
+        disableButton("sendLinkBtn", false);
+    }
+}
+
 </script>
 
 </body>
