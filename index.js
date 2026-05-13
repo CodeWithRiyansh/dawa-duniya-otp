@@ -26,7 +26,7 @@ if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
 }
 
 // ======================================================
-// SECURITY
+// SECURITY (Helmet)
 // ======================================================
 app.use(
   helmet({
@@ -59,6 +59,9 @@ app.use(
   })
 );
 
+// ======================================================
+// CORS
+// ======================================================
 app.use(
   cors({
     origin: [
@@ -98,6 +101,7 @@ app.use("/send-otp", otpLimiter);
 // VALIDATION
 // ======================================================
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const allowedDomains = [
   "gmail.com",
   "yahoo.com",
@@ -108,6 +112,9 @@ const allowedDomains = [
   "protonmail.com"
 ];
 
+// ======================================================
+// EMAIL TRANSPORT
+// ======================================================
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -124,13 +131,13 @@ const transporter = nodemailer.createTransport({
 app.get("/health", (req, res) => {
   res.json({
     success: true,
-    message: "🚀 Dawa Duniya Backend Running"
+    message: "🚀 Dawa Duniya OTP API Running"
   });
 });
 
-// Home (SAFE for Vercel)
+// Home
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
     message: "API is running"
   });
@@ -159,10 +166,10 @@ app.post("/send-otp", async (req, res) => {
       });
     }
 
-    // Disposable check
+    // Kickbox disposable check (FIXED)
     try {
       const response = await axios.get(
-        `https://open.kickbox.com/v1/disposable/${domain}`
+        `https://open.kickbox.com/v1/disposable/${email}`
       );
 
       if (response.data.disposable) {
@@ -259,12 +266,12 @@ app.post("/verify-otp", async (req, res) => {
   } catch (err) {
     return res.status(400).json({
       success: false,
-      message: "OTP expired"
+      message: "OTP expired or invalid"
     });
   }
 });
 
 // ======================================================
-// EXPORT FOR VERCEL (IMPORTANT)
+// EXPORT (Vercel IMPORTANT)
 // ======================================================
 module.exports = app;
