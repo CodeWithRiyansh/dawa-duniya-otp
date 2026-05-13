@@ -368,31 +368,48 @@ const link = `${BASE_URL}/verify-email?token=${token}`;
 // ======================================================
 // VERIFY LINK
 // ======================================================
-app.get("/verify-email", (req, res) => {
+aapp.get("/verify-email", (req, res) => {
+
   try {
+
     const { token } = req.query;
 
+    if (!token) {
+      return res.status(400).send("Invalid verification link");
+    }
+
+    // VERIFY JWT
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    const login = jwt.sign(
+    // LOGIN TOKEN
+    const loginToken = jwt.sign(
       { email: decoded.email },
       JWT_SECRET,
       { expiresIn: "1h" }
     );
 
-    res.cookie("dawaToken", login, {
+    // COOKIE
+    res.cookie("dawaToken", loginToken, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
       maxAge: 3600000,
     });
 
-    return res.redirect("https://dawa-duniya-otp.vercel.app/dashboard.html");
-  } catch {
-    return res.status(400).send("Invalid link");
+    // REDIRECT TO DASHBOARD
+    return res.redirect(
+      "https://dawa-duniya-otp.vercel.app/dashboard.html"
+    );
+
+  } catch (err) {
+
+    console.log(err);
+
+    return res.status(400).send(`
+      <h2>Invalid or expired link</h2>
+    `);
   }
 });
-
 // ======================================================
 // EXPORT
 // ======================================================
