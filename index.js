@@ -17,7 +17,6 @@ const app = express();
 // ======================================================
 // ENV CHECK
 // ======================================================
-const PORT = process.env.PORT || 3000;
 const { JWT_SECRET, EMAIL_USER, EMAIL_PASS } = process.env;
 
 if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
@@ -67,7 +66,7 @@ app.use(morgan("dev"));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ======================================================
-// RATE LIMIT (GLOBAL OTP PROTECTION)
+// RATE LIMIT
 // ======================================================
 const otpLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
@@ -79,6 +78,7 @@ const otpLimiter = rateLimit({
 });
 
 app.use("/send-otp", otpLimiter);
+app.use("/send-link", otpLimiter);
 
 // ======================================================
 // VALIDATION
@@ -86,7 +86,7 @@ app.use("/send-otp", otpLimiter);
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ======================================================
-// TRUST + TRACKING SYSTEM
+// TRUST SYSTEM
 // ======================================================
 const otpAttemptsByEmail = new Map();
 const otpAttemptsByIP = new Map();
@@ -119,15 +119,15 @@ async function isDisposableEmail(email) {
       `https://open.kickbox.com/v1/disposable/${email}`
     );
     return res.data.disposable;
-  } catch (err) {
-    return false; // fail-safe allow
+  } catch {
+    return false;
   }
 }
 
 function updateTrust(email, domain, disposable) {
   let score = trustScore.get(email) || 0;
 
-  const trustedDomains = [
+  const trusted = [
     "gmail.com",
     "outlook.com",
     "yahoo.com",
@@ -135,7 +135,7 @@ function updateTrust(email, domain, disposable) {
     "hotmail.com",
   ];
 
-  if (trustedDomains.includes(domain)) score += 2;
+  if (trusted.includes(domain)) score += 2;
   if (disposable) score -= 3;
 
   trustScore.set(email, score);
@@ -148,29 +148,22 @@ function updateTrust(email, domain, disposable) {
 
 // HEALTH
 app.get("/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "OTP API Running 🚀",
-  });
+  res.json({ success: true, message: "API running 🚀" });
 });
 
 // HOME
 app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "Dawa Duniya OTP API is running",
-  });
+  res.json({ success: true, message: "Dawa Duniya Auth API" });
 });
 
 // ======================================================
-// SEND OTP (UPGRADED ENGINE)
+// OTP FLOW
 // ======================================================
 app.post("/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
     const ip = getClientIP(req);
 
-    // STEP 1: format check
     if (!email || !emailRegex.test(email)) {
       return res.status(400).json({
         success: false,
@@ -180,9 +173,7 @@ app.post("/send-otp", async (req, res) => {
 
     const domain = email.split("@")[1].toLowerCase();
 
-    // ======================================================
-    // STEP 2: RATE LIMITING (EMAIL + IP)
-    // ======================================================
+    // RATE LIMIT LOGIC
     const emailCount = otpAttemptsByEmail.get(email) || 0;
     const ipCount = otpAttemptsByIP.get(ip) || 0;
 
@@ -196,42 +187,29 @@ app.post("/send-otp", async (req, res) => {
     if (ipCount >= 10) {
       return res.status(429).json({
         success: false,
-        message: "Too many requests from this IP",
+        message: "Too many requests from IP",
       });
     }
 
     otpAttemptsByEmail.set(email, emailCount + 1);
     otpAttemptsByIP.set(ip, ipCount + 1);
 
-    // ======================================================
-    // STEP 3: DISPOSABLE CHECK
-    // ======================================================
+    // DISPOSABLE CHECK
     const disposable = await isDisposableEmail(email);
 
-    // ======================================================
-    // STEP 4: TRUST SCORE
-    // ======================================================
+    // TRUST SCORE
     const score = updateTrust(email, domain, disposable);
 
-    // ======================================================
-    // STEP 5: DECISION ENGINE
-    // ======================================================
     if (disposable && score < 0) {
       return res.status(400).json({
         success: false,
-        message: "Temporary email addresses are not allowed",
+        message: "Temporary email not allowed",
       });
     }
 
-    // CAPTCHA TRIGGER FLAG (frontend use)
-    let requireCaptcha = false;
-    if (score <= 0 || disposable) {
-      requireCaptcha = true;
-    }
+    let requireCaptcha = score <= 0 || disposable;
 
-    // ======================================================
-    // OTP GENERATION
-    // ======================================================
+    // OTP
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const hashedOtp = await bcrypt.hash(otp, 10);
 
@@ -241,20 +219,14 @@ app.post("/send-otp", async (req, res) => {
       { expiresIn: "5m" }
     );
 
-    // ======================================================
-    // SEND EMAIL
-    // ======================================================
     await transporter.sendMail({
       from: `"Dawa Duniya" <${EMAIL_USER}>`,
       to: email,
       subject: "OTP Verification",
       html: `
-        <div style="font-family:Arial;padding:20px">
-          <h2>OTP Verification</h2>
-          <p>Your OTP is:</p>
-          <h1 style="color:#00a884">${otp}</h1>
-          <p>Valid for 5 minutes</p>
-        </div>
+        <h2>Your OTP</h2>
+        <h1>${otp}</h1>
+        <p>Valid for 5 minutes</p>
       `,
     });
 
@@ -263,9 +235,12 @@ app.post("/send-otp", async (req, res) => {
       vToken,
       requireCaptcha,
       trustScore: score,
+      availableMethods: {
+        otp: true,
+        emailLink: true,
+      },
     });
   } catch (err) {
-    console.log(err);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -280,49 +255,37 @@ app.post("/verify-otp", async (req, res) => {
   try {
     const { userOtp, vToken } = req.body;
 
-    if (!userOtp || !vToken) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP required",
-      });
-    }
-
     const decoded = jwt.verify(vToken, JWT_SECRET);
 
-    const isMatch = await bcrypt.compare(
+    const match = await bcrypt.compare(
       String(userOtp),
       decoded.otp
     );
 
-    if (!isMatch) {
+    if (!match) {
       return res.status(400).json({
         success: false,
         message: "Invalid OTP",
       });
     }
 
-    // update trust after success
-    const current = trustScore.get(decoded.email) || 0;
-    trustScore.set(decoded.email, current + 1);
-
-    const loginToken = jwt.sign(
+    const token = jwt.sign(
       { email: decoded.email },
       JWT_SECRET,
       { expiresIn: "1h" }
     );
 
-    res.cookie("dawaToken", loginToken, {
+    res.cookie("dawaToken", token, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
       maxAge: 3600000,
     });
 
-    return res.json({
-      success: true,
-      token: loginToken,
-    });
-  } catch (err) {
+    trustScore.set(decoded.email, (trustScore.get(decoded.email) || 0) + 1);
+
+    return res.json({ success: true, token });
+  } catch {
     return res.status(400).json({
       success: false,
       message: "OTP expired or invalid",
@@ -331,6 +294,64 @@ app.post("/verify-otp", async (req, res) => {
 });
 
 // ======================================================
-// EXPORT (VERCEL)
+// LINK FLOW
+// ======================================================
+app.post("/send-link", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ success: false });
+    }
+
+    const token = jwt.sign({ email }, JWT_SECRET, {
+      expiresIn: "10m",
+    });
+
+    const link = `http://localhost:3000/verify-email?token=${token}`;
+
+    await transporter.sendMail({
+      from: `"Dawa Duniya" <${EMAIL_USER}>`,
+      to: email,
+      subject: "Verify Email",
+      html: `<a href="${link}">Click to verify</a>`,
+    });
+
+    return res.json({ success: true });
+  } catch {
+    return res.status(500).json({ success: false });
+  }
+});
+
+// ======================================================
+// VERIFY LINK
+// ======================================================
+app.get("/verify-email", (req, res) => {
+  try {
+    const { token } = req.query;
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    const login = jwt.sign(
+      { email: decoded.email },
+      JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.cookie("dawaToken", login, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 3600000,
+    });
+
+    return res.send("Email verified 🚀");
+  } catch {
+    return res.status(400).send("Invalid link");
+  }
+});
+
+// ======================================================
+// EXPORT
 // ======================================================
 module.exports = app;
