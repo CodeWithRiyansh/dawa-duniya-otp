@@ -119,7 +119,7 @@ async function validateRealEmail(email) {
       };
     }
 
-    // INVALID FORMAT
+    // FORMAT CHECK
     if (
       data.is_valid_format &&
       data.is_valid_format.value === false
@@ -143,26 +143,44 @@ async function validateRealEmail(email) {
       };
     }
 
-    // DELIVERABILITY
-    const deliverability =
-      String(data.deliverability || "").toLowerCase();
-
-    const allowedStatuses = [
-      "deliverable",
-      "unknown",
-      "risky"
-    ];
-
+    // SMTP CHECK
     if (
-      deliverability &&
-      !allowedStatuses.includes(deliverability)
+      data.is_smtp_valid &&
+      data.is_smtp_valid.value === false
     ) {
 
       return {
         valid:false,
-        message:"Email does not exist"
+        message:"Email inbox does not exist"
       };
     }
+
+    return {
+      valid:true
+    };
+
+  } catch (err) {
+
+    console.log("VALIDATION ERROR:", err.message);
+
+    return {
+      valid:true
+    };
+  }
+}
+    // DELIVERABILITY
+    // ONLY BLOCK CLEARLY FAKE EMAILS
+
+if (
+  data.is_smtp_valid &&
+  data.is_smtp_valid.value === false
+) {
+
+  return {
+    valid:false,
+    message:"Email inbox does not exist"
+  };
+}
 
     return {
       valid:true
