@@ -252,46 +252,85 @@ app.post("/send-otp", async (req, res) => {
 // VERIFY OTP
 // ======================================================
 app.post("/verify-otp", async (req, res) => {
+
   try {
+
+    console.log("BODY:", req.body);
+
     const { userOtp, vToken } = req.body;
 
-    const decoded = jwt.verify(vToken, JWT_SECRET);
+    if (!userOtp || !vToken) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP or token missing",
+      });
+    }
 
-    const match = await bcrypt.compare(
+    // JWT VERIFY
+    let decoded;
+
+    try {
+
+      decoded = jwt.verify(vToken, JWT_SECRET);
+
+      console.log("DECODED:", decoded);
+
+    } catch (jwtErr) {
+
+      console.log("JWT ERROR:", jwtErr.message);
+
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired or invalid",
+      });
+    }
+
+    // OTP MATCH
+    const isMatch = await bcrypt.compare(
       String(userOtp),
       decoded.otp
     );
 
-    if (!match) {
+    console.log("OTP MATCH:", isMatch);
+
+    if (!isMatch) {
+
       return res.status(400).json({
         success: false,
         message: "Invalid OTP",
       });
     }
 
+    // LOGIN TOKEN
     const token = jwt.sign(
       { email: decoded.email },
       JWT_SECRET,
       { expiresIn: "1h" }
     );
 
-   res.cookie("dawaToken", login, {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-});
+    // COOKIE
+    res.cookie("dawaToken", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 3600000,
+    });
 
-    trustScore.set(decoded.email, (trustScore.get(decoded.email) || 0) + 1);
+    return res.json({
+      success: true,
+      token,
+    });
 
-    return res.json({ success: true, token });
-  } catch {
-    return res.status(400).json({
+  } catch (err) {
+
+    console.log("VERIFY ERROR:", err);
+
+    return res.status(500).json({
       success: false,
-      message: "OTP expired or invalid",
+      message: "Server error",
     });
   }
 });
-
 // ======================================================
 // LINK FLOW
 // ======================================================
