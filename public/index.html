@@ -1,122 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Dawa Duniya | Secure Login</title>
+<title>Dawa Duniya Auth</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet"/>
 
 <style>
-* {
-    box-sizing: border-box;
+body{
+    margin:0;
+    font-family:Poppins;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background: linear-gradient(135deg,#0f172a,#1e293b);
 }
 
-body {
-    margin: 0;
-    font-family: Poppins, sans-serif;
-    background: linear-gradient(135deg, #e6f7f4, #f0f4f8);
-
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    padding: 20px;
+/* GLASS CARD */
+.card{
+    width:380px;
+    padding:28px;
+    border-radius:20px;
+    background:rgba(255,255,255,0.08);
+    backdrop-filter: blur(20px);
+    border:1px solid rgba(255,255,255,0.15);
+    text-align:center;
+    color:white;
+    box-shadow:0 20px 60px rgba(0,0,0,0.4);
 }
 
-/* CARD */
-.card {
-    width: 100%;
-    max-width: 380px;
-    background: #fff;
-    padding: 28px;
-    border-radius: 22px;
-    text-align: center;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.12);
-    border: 1px solid rgba(0,0,0,0.05);
+h2{
+    margin:0;
+    color:#00ffcc;
 }
 
-/* BRAND */
-h2 {
-    margin: 0;
-    color: #00a884;
-}
-
-.subtitle {
-    font-size: 13px;
-    color: #666;
-    margin: 6px 0 18px;
+.subtitle{
+    font-size:12px;
+    opacity:0.8;
+    margin-bottom:15px;
 }
 
 /* INPUT */
-input {
-    width: 100%;
-    padding: 12px;
-    margin: 8px 0;
-    border-radius: 10px;
-    border: 1px solid #ddd;
-    outline: none;
-    transition: 0.2s;
-}
-
-input:focus {
-    border-color: #00a884;
-    box-shadow: 0 0 8px rgba(0,168,132,0.2);
+input{
+    width:100%;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+    outline:none;
+    margin:8px 0;
 }
 
 /* BUTTON */
-button {
-    width: 100%;
-    padding: 12px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: bold;
-    color: white;
-    margin-top: 8px;
-    transition: 0.2s;
+button{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+    transition:0.2s;
 }
 
-#sendBtn {
-    background: linear-gradient(135deg, #00a884, #00d2a0);
+.primary{
+    background:#00ffcc;
+    color:#000;
 }
 
-#verifyBtn {
-    background: linear-gradient(135deg, #007bff, #0056b3);
+.secondary{
+    background:#3b82f6;
+    color:#fff;
 }
 
-button:hover {
-    transform: translateY(-2px);
-    opacity: 0.95;
+button:hover{
+    transform:scale(1.03);
 }
 
-/* OTP */
-#otpSection input {
-    text-align: center;
-    font-size: 18px;
-    letter-spacing: 2px;
+/* OTP BOXES */
+.otp-container{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    margin:15px 0;
 }
 
-/* MESSAGE */
-#msg {
-    margin-top: 14px;
-    min-height: 18px;
-    font-size: 14px;
+.otp-box{
+    width:45px;
+    height:50px;
+    text-align:center;
+    font-size:18px;
+    border-radius:10px;
+    border:none;
+    outline:none;
+    transition:0.2s;
 }
 
-/* HIDE */
-.hidden {
-    display: none;
+.otp-box:focus{
+    transform:scale(1.1);
+    box-shadow:0 0 10px #00ffcc;
 }
 
-/* MOBILE */
-@media (max-width: 420px) {
-    .card {
-        width: 92%;
-        padding: 22px;
-    }
+/* SHAKE ANIMATION */
+@keyframes shake{
+    0%,100%{transform:translateX(0)}
+    25%{transform:translateX(-5px)}
+    50%{transform:translateX(5px)}
+    75%{transform:translateX(-5px)}
 }
+
+.shake{
+    animation:shake 0.3s;
+}
+
+/* TIMER */
+.timer{
+    font-size:12px;
+    margin-top:8px;
+    opacity:0.8;
+}
+
+.hidden{display:none;}
 </style>
 </head>
 
@@ -124,126 +128,177 @@ button:hover {
 
 <div class="card">
 
-    <!-- BRAND -->
-    <h2>Dawa Duniya</h2>
-    <div class="subtitle">Aapki sehat ka sathi ❤️</div>
+<h2>Dawa Duniya</h2>
+<div class="subtitle">Aapki sehat ka sathi ❤️</div>
 
-    <!-- EMAIL -->
-    <div id="emailSection">
-        <input type="email" id="email" placeholder="Enter Email"/>
-        <button id="sendBtn">Send OTP</button>
+<!-- EMAIL -->
+<div id="emailSection">
+    <input id="email" type="email" placeholder="Enter Email"/>
+    <button class="primary" onclick="handleSendOTP()">Send OTP</button>
+</div>
+
+<!-- OTP -->
+<div id="otpSection" class="hidden">
+
+    <div class="otp-container">
+        <input class="otp-box" maxlength="1"/>
+        <input class="otp-box" maxlength="1"/>
+        <input class="otp-box" maxlength="1"/>
+        <input class="otp-box" maxlength="1"/>
+        <input class="otp-box" maxlength="1"/>
+        <input class="otp-box" maxlength="1"/>
     </div>
 
-    <!-- OTP -->
-    <div id="otpSection" class="hidden">
-        <input type="text" id="otp" placeholder="Enter OTP"/>
-        <button id="verifyBtn">Verify & Login</button>
-    </div>
+    <button class="secondary" onclick="handleVerifyOTP()">Verify OTP</button>
 
-    <p id="msg"></p>
+    <div class="timer" id="timerText"></div>
+
+    <button id="resendBtn" class="primary" onclick="handleResend()" disabled>
+        Resend OTP
+    </button>
+</div>
+
+<p id="msg"></p>
+
 </div>
 
 <script>
-const API_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:3000"
-    : "https://dawa-duniya-otp.vercel.app";
+const API = window.location.hostname==="localhost"
+? "http://localhost:3000"
+: "https://dawa-duniya-otp.vercel.app";
 
-let tempVToken = "";
+let tempVToken="";
+let countdown=60;
+let timerInterval=null;
 
 /* SEND OTP */
-async function handleSendOTP() {
-    const email = document.getElementById("email").value.trim();
-    const msg = document.getElementById("msg");
+async function handleSendOTP(){
+    const email=document.getElementById("email").value;
+    const msg=document.getElementById("msg");
 
-    if (!email) {
-        msg.innerText = "❌ Email required";
-        msg.style.color = "red";
-        return;
-    }
+    msg.innerText="Sending OTP...";
+    msg.style.color="white";
 
-    msg.innerText = "Sending OTP...";
-    msg.style.color = "blue";
+    const res=await fetch(`${API}/send-otp`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email})
+    });
 
-    try {
-        const res = await fetch(`${API_URL}/send-otp`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email })
-        });
+    const data=await res.json();
 
-        const data = await res.json();
+    if(data.success){
+        tempVToken=data.vToken;
 
-        if (data.success) {
-            tempVToken = data.vToken;
+        document.getElementById("emailSection").classList.add("hidden");
+        document.getElementById("otpSection").classList.remove("hidden");
 
-            document.getElementById("emailSection").classList.add("hidden");
-            document.getElementById("otpSection").classList.remove("hidden");
+        startTimer();
 
-            msg.innerText = "✅ OTP sent!";
-            msg.style.color = "green";
-        } else {
-            msg.innerText = "❌ " + data.message;
-            msg.style.color = "red";
-        }
-
-    } catch (err) {
-        msg.innerText = "❌ Server error";
-        msg.style.color = "red";
+    }else{
+        msg.innerText=data.message;
+        msg.style.color="red";
     }
 }
 
-/* VERIFY OTP */
-window.handleVerifyOTP = async function () {
-    const otp = document.getElementById("otp").value.trim();
-    const msg = document.getElementById("msg");
+/* TIMER */
+function startTimer(){
+    const btn=document.getElementById("resendBtn");
+    const text=document.getElementById("timerText");
 
-    if (!otp) {
-        msg.innerText = "❌ OTP required";
-        msg.style.color = "red";
+    countdown=60;
+    btn.disabled=true;
+
+    timerInterval=setInterval(()=>{
+        text.innerText=`Resend OTP in ${countdown}s`;
+        countdown--;
+
+        if(countdown<0){
+            clearInterval(timerInterval);
+            btn.disabled=false;
+            text.innerText="You can resend OTP now";
+        }
+    },1000);
+}
+
+/* RESEND */
+function handleResend(){
+    handleSendOTP();
+}
+
+/* VERIFY OTP */
+async function handleVerifyOTP(){
+
+    const inputs=document.querySelectorAll(".otp-box");
+    const msg=document.getElementById("msg");
+
+    let otp="";
+    inputs.forEach(i=>otp+=i.value);
+
+    if(otp.length!==6){
+        triggerShake();
+        msg.innerText="Enter valid OTP";
+        msg.style.color="red";
         return;
     }
 
-    msg.innerText = "Verifying...";
-    msg.style.color = "blue";
+    const res=await fetch(`${API}/verify-otp`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            userOtp:otp,
+            vToken:tempVToken
+        })
+    });
 
-    try {
-        const res = await fetch(`${API_URL}/verify-otp`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                userOtp: otp,
-                vToken: tempVToken
-            })
+    const data=await res.json();
+
+    if(data.success){
+        localStorage.setItem("dawaToken",data.token);
+        msg.innerText="Login Successful";
+
+        setTimeout(()=>{
+            window.location.href="dashboard.html";
+        },800);
+
+    }else{
+        triggerShake();
+        msg.innerText="Wrong OTP";
+        msg.style.color="red";
+    }
+}
+
+/* SHAKE */
+function triggerShake(){
+    document.querySelector(".otp-container").classList.add("shake");
+    setTimeout(()=>{
+        document.querySelector(".otp-container").classList.remove("shake");
+    },300);
+}
+
+/* OTP AUTO MOVE + PASTE */
+document.addEventListener("DOMContentLoaded",()=>{
+    const inputs=document.querySelectorAll(".otp-box");
+
+    inputs.forEach((input,index)=>{
+        input.addEventListener("input",()=>{
+            if(input.value && index<inputs.length-1){
+                inputs[index+1].focus();
+            }
         });
 
-        const data = await res.json();
+        input.addEventListener("keydown",(e)=>{
+            if(e.key==="Backspace" && !input.value && index>0){
+                inputs[index-1].focus();
+            }
+        });
 
-        if (data.success) {
-            localStorage.setItem("dawaToken", data.token);
-
-            msg.innerText = "✅ Login Successful";
-            msg.style.color = "green";
-
-            setTimeout(() => {
-                window.location.href = "dashboard.html";
-            }, 800);
-
-        } else {
-            msg.innerText = "❌ " + data.message;
-            msg.style.color = "red";
-        }
-
-    } catch (err) {
-        msg.innerText = "❌ Server error";
-        msg.style.color = "red";
-    }
-};
-
-/* EVENTS */
-document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("sendBtn").addEventListener("click", handleSendOTP);
-    document.getElementById("verifyBtn").addEventListener("click", window.handleVerifyOTP);
+        input.addEventListener("paste",(e)=>{
+            e.preventDefault();
+            const data=e.clipboardData.getData("text").split("");
+            inputs.forEach((inp,i)=>inp.value=data[i]||"");
+        });
+    });
 });
 </script>
 
