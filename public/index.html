@@ -24,48 +24,67 @@ body{
     overflow:hidden;
 }
 
-/* SOFT FLOAT BACKGROUND EFFECT */
-body::before{
-    content:"";
-    position:absolute;
-    width:400px;
-    height:400px;
-    background:#00a884;
-    filter:blur(120px);
-    top:-100px;
-    left:-100px;
-    opacity:0.4;
-}
-
+/* ANIMATED BACKGROUND GLOW */
+body::before,
 body::after{
     content:"";
     position:absolute;
-    width:400px;
-    height:400px;
-    background:#3b82f6;
+    width:500px;
+    height:500px;
     filter:blur(120px);
-    bottom:-100px;
-    right:-100px;
-    opacity:0.3;
+    opacity:0.35;
+    animation: floatGlow 8s ease-in-out infinite;
+}
+
+body::before{
+    background:#00ffcc;
+    top:-150px;
+    left:-150px;
+}
+
+body::after{
+    background:#3b82f6;
+    bottom:-150px;
+    right:-150px;
+    animation-delay:3s;
+}
+
+@keyframes floatGlow{
+    0%,100%{ transform: translateY(0px) scale(1); }
+    50%{ transform: translateY(30px) scale(1.1); }
 }
 
 /* CARD */
 .wrapper{
     width:100%;
-    max-width:380px;
-    padding:30px;
-    border-radius:20px;
+    max-width:430px; /* ⬅️ BIGGER FORM */
+    padding:40px 35px;
+    border-radius:22px;
     background: rgba(255,255,255,0.08);
     backdrop-filter: blur(18px);
     border:1px solid rgba(255,255,255,0.12);
-    box-shadow:0 20px 50px rgba(0,0,0,0.4);
+    box-shadow:0 25px 60px rgba(0,0,0,0.5);
+
     text-align:center;
-    z-index:10;
+
+    /* ENTRY ANIMATION */
+    animation: slideIn 0.8s ease;
+}
+
+@keyframes slideIn{
+    from{
+        opacity:0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to{
+        opacity:1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 /* LOGO */
 .logo{
-    font-size:26px;
+    font-size:30px;
     font-weight:600;
     color:#00ffcc;
     letter-spacing:0.5px;
@@ -74,37 +93,58 @@ body::after{
 .tagline{
     font-size:13px;
     color:#cbd5e1;
-    margin-bottom:25px;
+    margin-bottom:30px;
 }
 
 /* INPUT */
 input{
     width:100%;
-    padding:13px;
-    margin:10px 0;
-    border-radius:12px;
+    padding:15px;
+    margin:12px 0;
+    border-radius:14px;
     border:1px solid rgba(255,255,255,0.15);
     background: rgba(255,255,255,0.05);
     color:white;
     outline:none;
-    transition:0.2s;
+    transition:0.25s;
 }
 
+/* INPUT ANIMATION */
 input:focus{
     border-color:#00ffcc;
-    box-shadow:0 0 15px rgba(0,255,204,0.2);
+    box-shadow:0 0 18px rgba(0,255,204,0.25);
+    transform: scale(1.02);
 }
 
 /* BUTTON */
 button{
     width:100%;
-    padding:13px;
-    margin-top:10px;
+    padding:15px;
+    margin-top:12px;
     border:none;
-    border-radius:12px;
+    border-radius:14px;
     font-weight:600;
     cursor:pointer;
-    transition:0.25s;
+    transition:0.3s;
+    position:relative;
+    overflow:hidden;
+}
+
+/* BUTTON HOVER GLOW */
+button::after{
+    content:"";
+    position:absolute;
+    top:0;
+    left:-100%;
+    width:100%;
+    height:100%;
+    background: rgba(255,255,255,0.2);
+    transform: skewX(-20deg);
+    transition:0.5s;
+}
+
+button:hover::after{
+    left:120%;
 }
 
 button:hover{
@@ -121,14 +161,15 @@ button:hover{
     color:#fff;
 }
 
-/* MSG */
+/* MESSAGE */
 #msg{
-    margin-top:15px;
+    margin-top:18px;
     font-size:13px;
     color:#e2e8f0;
+    min-height:20px;
 }
 
-/* OTP BOX SIMPLE CLEAN */
+/* HIDDEN */
 .hidden{display:none;}
 </style>
 </head>
