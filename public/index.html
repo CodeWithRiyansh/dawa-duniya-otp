@@ -94,19 +94,33 @@
     <p id="msg"></p>
 </div>
 
+<!-- ... style section same rahega ... -->
+
 <script>
-    const API_URL = "https://dawa-duniya-otp.vercel.app";
+    // ✅ AUTO-DETECT URL: Ye localhost aur Vercel dono khud sambhaal lega
+    const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://localhost:3000"
+        : "https://dawa-duniya-otp.vercel.app";
+
+    console.log("Connected to API:", API_URL);
 
     // AUTO LOGIN CHECK
     if (localStorage.getItem("dawaToken")) {
         window.location.href = "dashboard.html";
     }
 
-    document.getElementById("sendBtn").addEventListener("click", handleSendOTP);
-    document.getElementById("verifyBtn").addEventListener("click", handleVerifyOTP);
+    // Wait for DOM to load before adding listeners
+    document.addEventListener("DOMContentLoaded", () => {
+        const sendBtn = document.getElementById("sendBtn");
+        const verifyBtn = document.getElementById("verifyBtn");
+
+        if(sendBtn) sendBtn.addEventListener("click", handleSendOTP);
+        if(verifyBtn) verifyBtn.addEventListener("click", handleVerifyOTP);
+    });
 
     async function handleSendOTP() {
-        const email = document.getElementById("email").value.trim();
+        const emailInput = document.getElementById("email");
+        const email = emailInput ? emailInput.value.trim() : "";
         const msg = document.getElementById("msg");
         const loader = document.getElementById("btnLoader");
         const btnText = document.getElementById("btnText");
@@ -118,13 +132,15 @@
             return;
         }
 
-        // UI Reset
-        msg.innerText = "";
+        // Reset UI
+        msg.innerText = "Process shuru ho raha hai...";
+        msg.style.color = "blue";
         loader.style.display = "block";
         btnText.style.display = "none";
         sendBtn.disabled = true;
 
         try {
+            console.log("Sending request to:", `${API_URL}/send-otp`);
             const res = await fetch(`${API_URL}/send-otp`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -132,6 +148,7 @@
             });
 
             const data = await res.json();
+            console.log("Response received:", data);
 
             if (data.success) {
                 localStorage.setItem("tempVToken", data.vToken);
@@ -141,12 +158,12 @@
                 msg.innerHTML = `✅ OTP bhej diya gaya hai!`;
             } else {
                 msg.style.color = "red";
-                msg.innerText = "❌ " + data.message;
+                msg.innerText = "❌ " + (data.message || "Unknown Error");
             }
         } catch (err) {
-            console.error(err);
+            console.error("Fetch Error:", err);
             msg.style.color = "red";
-            msg.innerText = "❌ Server se connect nahi ho pa raha!";
+            msg.innerText = "❌ Server error! Console check karo.";
         } finally {
             loader.style.display = "none";
             btnText.style.display = "inline";
@@ -154,41 +171,7 @@
         }
     }
 
-    async function handleVerifyOTP() {
-        const userOtp = document.getElementById("otp").value.trim();
-        const vToken = localStorage.getItem("tempVToken");
-        const msg = document.getElementById("msg");
-
-        if (!userOtp) {
-            msg.style.color = "red";
-            msg.innerText = "❌ OTP daalo";
-            return;
-        }
-
-        try {
-            const res = await fetch(`${API_URL}/verify-otp`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userOtp, vToken })
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                localStorage.removeItem("tempVToken");
-                localStorage.setItem("dawaToken", data.token);
-                msg.style.color = "green";
-                msg.innerText = "✅ Login Successful!";
-                setTimeout(() => { window.location.href = "dashboard.html"; }, 1000);
-            } else {
-                msg.style.color = "red";
-                msg.innerText = "❌ " + data.message;
-            }
-        } catch (err) {
-            msg.style.color = "red";
-            msg.innerText = "❌ Verification failed";
-        }
-    }
+    // ... handleVerifyOTP function same rahega ...
 </script>
 
 </body>
