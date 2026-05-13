@@ -1,5 +1,6 @@
 const express = require("express");
 const nodemailer = require("nodemailer");
+const path = require("path");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 const helmet = require("helmet");
@@ -13,7 +14,10 @@ require("dotenv").config();
 
 const app = express();
 
-// ================= ENV =================
+// ======================================================
+// ENV CHECK
+// ======================================================
+const PORT = process.env.PORT || 3000;
 const { JWT_SECRET, EMAIL_USER, EMAIL_PASS } = process.env;
 
 if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
@@ -21,49 +25,32 @@ if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
   process.exit(1);
 }
 
-// ================= MIDDLEWARE =================
-app.use(express.json({ limit: "10kb" }));
-app.use(cookieParser());
-app.use(morgan("dev"));
-
-// ================= FIXED CSP (IMPORTANT FOR GOOGLE FONTS) =================
+// ======================================================
+// SECURITY (Helmet FIXED)
+// ======================================================
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://fonts.googleapis.com"
-        ],
-        styleSrcElem: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://fonts.googleapis.com"
-        ],
-        fontSrc: [
-          "'self'",
-          "https://fonts.gstatic.com"
-        ],
-        imgSrc: ["'self'", "data:", "https://*"],
-        connectSrc: [
-          "'self'",
-          "https://open.kickbox.com"
-        ],
-        objectSrc: ["'none'"]
-      }
-    }
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        objectSrc: ["'none'"],
+      },
+    },
   })
 );
 
-// ================= CORS =================
+// ======================================================
+// CORS
+// ======================================================
 app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "http://127.0.0.1:5500",
       "https://dawa-duniya-otp.vercel.app"
     ],
     methods: ["GET", "POST"],
@@ -71,25 +58,31 @@ app.use(
   })
 );
 
-// ================= RATE LIMIT =================
-app.use(
-  "/send-otp",
-  rateLimit({
-    windowMs: 5 * 60 * 1000,
-    max: 10,
-  })
-);
+// ======================================================
+// MIDDLEWARE
+// ======================================================
+app.use(express.json({ limit: "10kb" }));
+app.use(cookieParser());
+app.use(morgan("dev"));
+app.use(express.static(path.join(__dirname, "public")));
 
-// ================= EMAIL =================
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS,
+// ======================================================
+// RATE LIMIT (OTP SAFE)
+// ======================================================
+const otpLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  message: {
+    success: false,
+    message: "Too many OTP requests. Try after 5 minutes.",
   },
 });
 
-// ================= VALIDATION =================
+app.use("/send-otp", otpLimiter);
+
+// ======================================================
+// VALIDATION
+// ======================================================
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const allowedDomains = [
@@ -98,10 +91,24 @@ const allowedDomains = [
   "outlook.com",
   "hotmail.com",
   "icloud.com",
+  "rediffmail.com",
   "protonmail.com",
 ];
 
-// ================= HEALTH =================
+// ======================================================
+// EMAIL TRANSPORT
+// ======================================================
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
+  },
+});
+
+// ======================================================
+// HEALTH CHECK
+// ======================================================
 app.get("/health", (req, res) => {
   res.json({
     success: true,
@@ -109,7 +116,19 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ================= SEND OTP =================
+// ======================================================
+// HOME
+// ======================================================
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Dawa Duniya OTP API is running",
+  });
+});
+
+// ======================================================
+// SEND OTP
+// ======================================================
 app.post("/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
@@ -126,56 +145,68 @@ app.post("/send-otp", async (req, res) => {
     if (!allowedDomains.includes(domain)) {
       return res.status(400).json({
         success: false,
-        message: "Email provider not allowed",
+        message: "Only trusted email providers allowed",
       });
     }
 
-    // Kickbox check
+    // Kickbox disposable check (FIXED)
     try {
-      const r = await axios.get(
+      const response = await axios.get(
         `https://open.kickbox.com/v1/disposable/${email}`
       );
 
-      if (r.data.disposable) {
+      if (response.data.disposable) {
         return res.status(400).json({
           success: false,
           message: "Temporary email not allowed",
         });
       }
-    } catch {}
+    } catch (err) {
+      console.log("Kickbox skipped");
+    }
 
-    // OTP
+    // OTP generate
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const hashedOtp = await bcrypt.hash(otp, 10);
 
     const vToken = jwt.sign(
-      { email: email.toLowerCase(), otp: hashedOtp },
+      { email, otp: hashedOtp },
       JWT_SECRET,
       { expiresIn: "5m" }
     );
 
+    // send email
     await transporter.sendMail({
-      from: EMAIL_USER,
+      from: `"Dawa Duniya" <${EMAIL_USER}>`,
       to: email,
       subject: "OTP Verification",
       html: `
         <div style="font-family:Arial;padding:20px">
           <h2>OTP Verification</h2>
+          <p>Your OTP is:</p>
           <h1 style="color:#00a884">${otp}</h1>
           <p>Valid for 5 minutes</p>
         </div>
       `,
     });
 
-    res.json({ success: true, vToken });
+    return res.json({
+      success: true,
+      vToken,
+    });
 
   } catch (err) {
     console.log(err);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 });
 
-// ================= VERIFY OTP =================
+// ======================================================
+// VERIFY OTP
+// ======================================================
 app.post("/verify-otp", async (req, res) => {
   try {
     const { userOtp, vToken } = req.body;
@@ -187,42 +218,47 @@ app.post("/verify-otp", async (req, res) => {
       });
     }
 
-    let decoded;
-    try {
-      decoded = jwt.verify(vToken, JWT_SECRET);
-    } catch {
-      return res.status(400).json({
-        success: false,
-        message: "OTP expired",
-      });
-    }
+    const decoded = jwt.verify(vToken, JWT_SECRET);
 
-    const match = await bcrypt.compare(
+    const isMatch = await bcrypt.compare(
       String(userOtp),
       decoded.otp
     );
 
-    if (!match) {
+    if (!isMatch) {
       return res.status(400).json({
         success: false,
         message: "Invalid OTP",
       });
     }
 
-    const token = jwt.sign(
+    const loginToken = jwt.sign(
       { email: decoded.email },
       JWT_SECRET,
       { expiresIn: "1h" }
     );
 
-    return res.json({ success: true, token });
+    res.cookie("dawaToken", loginToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 3600000,
+    });
+
+    return res.json({
+      success: true,
+      token: loginToken,
+    });
 
   } catch (err) {
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Server error",
+      message: "OTP expired or invalid",
     });
   }
 });
 
+// ======================================================
+// EXPORT (VERCEL)
+// ======================================================
 module.exports = app;
