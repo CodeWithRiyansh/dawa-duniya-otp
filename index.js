@@ -15,7 +15,7 @@ require("dotenv").config();
 const app = express();
 
 // ======================================================
-// ENV
+// ENV CHECK
 // ======================================================
 const PORT = process.env.PORT || 3000;
 const { JWT_SECRET, EMAIL_USER, EMAIL_PASS } = process.env;
@@ -26,36 +26,21 @@ if (!JWT_SECRET || !EMAIL_USER || !EMAIL_PASS) {
 }
 
 // ======================================================
-// SECURITY (Helmet)
+// SECURITY (Helmet FIXED)
 // ======================================================
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://unpkg.com",
-          "https://cdnjs.cloudflare.com"
-        ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://fonts.googleapis.com",
-          "https://cdnjs.cloudflare.com"
-        ],
-        imgSrc: ["'self'", "data:", "https://*"],
-        connectSrc: [
-          "'self'",
-          "https://dawa-duniya-otp.vercel.app",
-          "https://open.kickbox.com"
-        ],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
-        upgradeInsecureRequests: []
-      }
-    }
+      },
+    },
   })
 );
 
@@ -69,7 +54,7 @@ app.use(
       "https://dawa-duniya-otp.vercel.app"
     ],
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
   })
 );
 
@@ -82,17 +67,15 @@ app.use(morgan("dev"));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ======================================================
-// RATE LIMIT
+// RATE LIMIT (OTP SAFE)
 // ======================================================
 const otpLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
+  max: 10,
   message: {
     success: false,
-    message: "Too many OTP requests. 5 min baad try karein."
-  }
+    message: "Too many OTP requests. Try after 5 minutes.",
+  },
 });
 
 app.use("/send-otp", otpLimiter);
@@ -109,7 +92,7 @@ const allowedDomains = [
   "hotmail.com",
   "icloud.com",
   "rediffmail.com",
-  "protonmail.com"
+  "protonmail.com",
 ];
 
 // ======================================================
@@ -119,27 +102,27 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: EMAIL_USER,
-    pass: EMAIL_PASS
-  }
+    pass: EMAIL_PASS,
+  },
 });
 
 // ======================================================
-// ROUTES
+// HEALTH CHECK
 // ======================================================
-
-// Health check
 app.get("/health", (req, res) => {
   res.json({
     success: true,
-    message: "🚀 Dawa Duniya OTP API Running"
+    message: "OTP API Running 🚀",
   });
 });
 
-// Home
+// ======================================================
+// HOME
+// ======================================================
 app.get("/", (req, res) => {
-  res.status(200).json({
+  res.json({
     success: true,
-    message: "API is running"
+    message: "Dawa Duniya OTP API is running",
   });
 });
 
@@ -153,7 +136,7 @@ app.post("/send-otp", async (req, res) => {
     if (!email || !emailRegex.test(email)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid email"
+        message: "Invalid email",
       });
     }
 
@@ -162,7 +145,7 @@ app.post("/send-otp", async (req, res) => {
     if (!allowedDomains.includes(domain)) {
       return res.status(400).json({
         success: false,
-        message: "Only trusted emails allowed"
+        message: "Only trusted email providers allowed",
       });
     }
 
@@ -175,13 +158,14 @@ app.post("/send-otp", async (req, res) => {
       if (response.data.disposable) {
         return res.status(400).json({
           success: false,
-          message: "Temporary email not allowed"
+          message: "Temporary email not allowed",
         });
       }
-    } catch (e) {
+    } catch (err) {
       console.log("Kickbox skipped");
     }
 
+    // OTP generate
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const hashedOtp = await bcrypt.hash(otp, 10);
 
@@ -191,6 +175,7 @@ app.post("/send-otp", async (req, res) => {
       { expiresIn: "5m" }
     );
 
+    // send email
     await transporter.sendMail({
       from: `"Dawa Duniya" <${EMAIL_USER}>`,
       to: email,
@@ -202,18 +187,19 @@ app.post("/send-otp", async (req, res) => {
           <h1 style="color:#00a884">${otp}</h1>
           <p>Valid for 5 minutes</p>
         </div>
-      `
+      `,
     });
 
     return res.json({
       success: true,
-      vToken
+      vToken,
     });
+
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       success: false,
-      message: "Server error"
+      message: "Server error",
     });
   }
 });
@@ -228,7 +214,7 @@ app.post("/verify-otp", async (req, res) => {
     if (!userOtp || !vToken) {
       return res.status(400).json({
         success: false,
-        message: "OTP required"
+        message: "OTP required",
       });
     }
 
@@ -242,7 +228,7 @@ app.post("/verify-otp", async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({
         success: false,
-        message: "Invalid OTP"
+        message: "Invalid OTP",
       });
     }
 
@@ -256,22 +242,23 @@ app.post("/verify-otp", async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      maxAge: 3600000
+      maxAge: 3600000,
     });
 
     return res.json({
       success: true,
-      token: loginToken
+      token: loginToken,
     });
+
   } catch (err) {
     return res.status(400).json({
       success: false,
-      message: "OTP expired or invalid"
+      message: "OTP expired or invalid",
     });
   }
 });
 
 // ======================================================
-// EXPORT (Vercel IMPORTANT)
+// EXPORT (VERCEL)
 // ======================================================
 module.exports = app;
